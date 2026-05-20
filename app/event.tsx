@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import {
   FlatList,
   StyleSheet,
@@ -5,26 +6,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-const expenses = [
-  {
-    id: "1",
-    name: "Salmon fillet",
-    amount: 80.0,
-    paidBy: "Jake",
-    splitBetween: 4,
-  },
-  { id: "2", name: "Drinks", amount: 33.24, paidBy: "You", splitBetween: 4 },
-  {
-    id: "3",
-    name: "Sauce & ginger",
-    amount: 5.76,
-    paidBy: "You",
-    splitBetween: 4,
-  },
-];
+import useStore from "../store/useStore";
 
 export default function EventScreen() {
+  const { expenses } = useStore();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sushi Night 🍣</Text>
@@ -50,7 +36,10 @@ export default function EventScreen() {
         )}
       />
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push("/add-expense")}
+        >
           <Text style={styles.addButtonText}>+ Add Expense</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.settleButton}>
