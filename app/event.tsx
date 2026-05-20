@@ -42,7 +42,10 @@ export default function EventScreen() {
         >
           <Text style={styles.addButtonText}>+ Add Expense</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.settleButton}>
+        <TouchableOpacity
+          style={styles.settleButton}
+          onPress={() => router.push("/settle")}
+        >
           <Text style={styles.settleButtonText}>Settle Up</Text>
         </TouchableOpacity>
       </View>
