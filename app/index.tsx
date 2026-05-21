@@ -7,6 +7,9 @@ import {
   View,
 } from "react-native";
 
+import { useEffect } from "react";
+import { supabase } from "../lib/supabase";
+
 const events = [
   {
     id: "1",
@@ -32,6 +35,14 @@ const events = [
 ];
 
 export default function HomeScreen() {
+  useEffect(() => {
+    async function test() {
+      const { data, error } = await supabase.from("events").select("*");
+      console.log("data:", data);
+      console.log("error:", error);
+    }
+    test();
+  }, []);
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Split 💸</Text>
