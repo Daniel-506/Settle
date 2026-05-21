@@ -45,7 +45,10 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => router.push("/event")}
+            onPress={() => {
+              console.log("item:", item);
+              router.push(`/event/${item.id}`);
+            }}
           >
             <Text style={styles.eventName}>{item.name}</Text>
             <Text style={styles.eventDetail}>{item.date}</Text>

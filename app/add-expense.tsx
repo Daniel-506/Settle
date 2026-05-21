@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -8,25 +8,39 @@ import {
   TextInput,
   TouchableOpacity,
 } from "react-native";
-import useStore from "../store/useStore";
+import { supabase } from "../lib/supabase";
 
 export default function AddExpenseScreen() {
+  const { event_id } = useLocalSearchParams();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const { addExpense } = useStore();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!name || !amount) return;
+    setLoading(true);
+    setError("");
 
-    addExpense({
-      id: Date.now().toString(),
-      name: name,
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { error } = await supabase.from("expenses").insert({
+      event_id,
+      name,
       amount: parseFloat(amount),
-      paidBy: "You",
-      splitBetween: 4,
+      paid_by: user.email,
+      split_between: 4,
     });
 
-    router.back();
+    if (error) {
+      setError(error.message);
+    } else {
+      router.back();
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -35,6 +49,8 @@ export default function AddExpenseScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <Text style={styles.title}>Add Expense</Text>
+
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <Text style={styles.label}>What did you buy?</Text>
       <TextInput
@@ -56,8 +72,14 @@ export default function AddExpenseScreen() {
         keyboardType="decimal-pad"
       />
 
-      <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-        <Text style={styles.addButtonText}>Add Expense</Text>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={handleAdd}
+        disabled={loading}
+      >
+        <Text style={styles.addButtonText}>
+          {loading ? "Adding..." : "Add Expense"}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -118,5 +140,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: "#888",
     fontSize: 16,
+  },
+  error: {
+    color: "#A32D2D",
+    fontSize: 14,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: "#FAEAEA",
+    borderRadius: 8,
   },
 });
