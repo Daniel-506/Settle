@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -6,43 +7,34 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-import { useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
-const events = [
-  {
-    id: "1",
-    name: "Sushi Night 🍣",
-    date: "May 18, 2026",
-    members: 4,
-    total: 119.0,
-  },
-  {
-    id: "2",
-    name: "Movie Night 🎬",
-    date: "May 10, 2026",
-    members: 3,
-    total: 45.5,
-  },
-  {
-    id: "3",
-    name: "BBQ Weekend 🔥",
-    date: "May 3, 2026",
-    members: 6,
-    total: 230.0,
-  },
-];
-
 export default function HomeScreen() {
+  const [events, setEvents] = useState([]);
+  const [session, setSession] = useState(null);
+
   useEffect(() => {
-    async function test() {
+    // First get the session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      console.log("session:", session?.user?.email);
+    });
+  }, []);
+
+  useEffect(() => {
+    // Only fetch events once we have a session
+    if (!session) return;
+
+    async function loadEvents() {
       const { data, error } = await supabase.from("events").select("*");
       console.log("data:", data);
       console.log("error:", error);
+      if (data) setEvents(data);
     }
-    test();
-  }, []);
+
+    loadEvents();
+  }, [session]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Split 💸</Text>
@@ -56,14 +48,14 @@ export default function HomeScreen() {
             onPress={() => router.push("/event")}
           >
             <Text style={styles.eventName}>{item.name}</Text>
-            <Text style={styles.eventDetail}>
-              {item.date} · {item.members} people
-            </Text>
-            <Text style={styles.eventTotal}>${item.total.toFixed(2)}</Text>
+            <Text style={styles.eventDetail}>{item.date}</Text>
           </TouchableOpacity>
         )}
       />
-      <TouchableOpacity style={styles.newButton}>
+      <TouchableOpacity
+        style={styles.newButton}
+        onPress={() => router.push("/new-event")}
+      >
         <Text style={styles.newButtonText}>+ New Event</Text>
       </TouchableOpacity>
     </View>
@@ -104,11 +96,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#888",
     marginBottom: 8,
-  },
-  eventTotal: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#534AB7",
   },
   newButton: {
     backgroundColor: "#534AB7",
