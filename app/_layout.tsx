@@ -6,14 +6,27 @@ export default function RootLayout() {
   const [session, setSession] = useState(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (!session) {
         router.replace("/login");
+      } else {
+        // Check if user has a profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", session.user.id)
+          .single();
+
+        if (!profile) {
+          router.replace("/setup-profile");
+        } else {
+          router.replace("/");
+        }
       }
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (!session) {
         router.replace("/login");
