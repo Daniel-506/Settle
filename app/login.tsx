@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -27,8 +26,6 @@ export default function LoginScreen() {
 
     if (error) {
       setError(error.message);
-    } else {
-      router.replace("/");
     }
 
     setLoading(false);
@@ -45,9 +42,8 @@ export default function LoginScreen() {
 
     if (error) {
       setError(error.message);
-    } else {
-      router.replace("/");
     }
+    // Don't manually redirect — _layout.tsx will handle it based on profile check
 
     setLoading(false);
   };

@@ -4,6 +4,7 @@ import {
   FlatList,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,6 +16,9 @@ export default function EventScreen() {
   const [expenses, setExpenses] = useState([]);
   const [event, setEvent] = useState(null);
   const [members, setMembers] = useState([]);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -64,6 +68,38 @@ export default function EventScreen() {
     setMembers(profiles || []);
   }
 
+  const handleSearch = async (text) => {
+    setMemberSearch(text);
+    if (text.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username, display_name")
+      .ilike("username", `%${text}%`)
+      .limit(5);
+
+    // Filter out members already in the event
+    const existingIds = members.map((m) => m.id);
+    const filtered = (data || []).filter((p) => !existingIds.includes(p.id));
+    setSearchResults(filtered);
+  };
+
+  const addMemberToEvent = async (profile) => {
+    await supabase.from("event_members").insert({
+      event_id: id,
+      user_id: profile.id,
+      status: "active",
+    });
+
+    setMemberSearch("");
+    setSearchResults([]);
+    setShowAddMember(false);
+    loadMembers();
+  };
+
   const memberNames = members.map((m) => m.display_name || "Unknown");
 
   const { total, fairShare } =
@@ -80,10 +116,53 @@ export default function EventScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{event?.name || "Loading..."}</Text>
-      <Text style={styles.subtitle}>
-        {event?.date} · {members.length} people
-      </Text>
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>{event?.name || "Loading..."}</Text>
+          <Text style={styles.subtitle}>
+            {event?.date} · {members.length} people
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addMemberButton}
+          onPress={() => setShowAddMember(!showAddMember)}
+        >
+          <Text style={styles.addMemberButtonText}>
+            {showAddMember ? "Cancel" : "+ Add"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showAddMember && (
+        <View>
+          <TextInput
+            style={styles.input}
+            placeholder="Search by username..."
+            value={memberSearch}
+            onChangeText={handleSearch}
+            autoCapitalize="none"
+            autoFocus
+          />
+          {searchResults.length > 0 && (
+            <View style={styles.searchResults}>
+              {searchResults.map((profile) => (
+                <TouchableOpacity
+                  key={profile.id}
+                  style={styles.searchResult}
+                  onPress={() => addMemberToEvent(profile)}
+                >
+                  <Text style={styles.searchResultName}>
+                    {profile.display_name}
+                  </Text>
+                  <Text style={styles.searchResultUsername}>
+                    @{profile.username}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>
@@ -104,13 +183,13 @@ export default function EventScreen() {
             <View style={styles.cardLeft}>
               <Text style={styles.expenseName}>{item.name}</Text>
               <Text style={styles.expenseDetail}>
-                paid by {item.paid_by} · split {item.split_between} ways
+                paid by {item.paid_by} · split {members.length} ways
               </Text>
             </View>
             <View style={styles.cardRight}>
               <Text style={styles.amount}>${item.amount.toFixed(2)}</Text>
               <Text style={styles.perPerson}>
-                ${(item.amount / item.split_between).toFixed(2)} each
+                ${(item.amount / members.length).toFixed(2)} each
               </Text>
             </View>
           </View>
@@ -241,5 +320,57 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: "#fff",
+  },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  addMemberButton: {
+    backgroundColor: "#534AB7",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  addMemberButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  input: {
+    backgroundColor: "#f9f9f9",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    borderWidth: 0.5,
+    borderColor: "#e0e0e0",
+    marginBottom: 8,
+  },
+  searchResults: {
+    backgroundColor: "#f9f9f9",
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: "#e0e0e0",
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  searchResult: {
+    padding: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e0e0e0",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  searchResultName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1A1A1A",
+  },
+  searchResultUsername: {
+    fontSize: 13,
+    color: "#888",
   },
 });

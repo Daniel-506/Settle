@@ -8,31 +8,33 @@ export default function RootLayout() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
-      if (!session) {
-        router.replace("/login");
-      } else {
-        // Check if user has a profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", session.user.id)
-          .single();
-
-        if (!profile) {
-          router.replace("/setup-profile");
-        } else {
-          router.replace("/");
-        }
-      }
+      await handleSession(session);
     });
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      if (!session) {
-        router.replace("/login");
-      }
+      await handleSession(session);
     });
   }, []);
+
+  async function handleSession(session) {
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!profile) {
+      router.replace("/setup-profile");
+    } else {
+      router.replace("/");
+    }
+  }
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }
