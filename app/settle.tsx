@@ -1,4 +1,5 @@
-import { router } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -7,13 +8,61 @@ import {
   View,
 } from "react-native";
 import { calculateSplit } from "../lib/splitCalculator";
-import useStore from "../store/useStore";
-
-const MEMBERS = ["Jake", "You", "Maria", "Chris"];
+import { supabase } from "../lib/supabase";
 
 export default function SettleScreen() {
-  const { expenses } = useStore();
-  const { total, fairShare, payments } = calculateSplit(expenses, MEMBERS);
+  const { event_id } = useLocalSearchParams();
+  const [expenses, setExpenses] = useState([]);
+  const [members, setMembers] = useState([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadExpenses();
+      loadMembers();
+    }, []),
+  );
+
+  async function loadExpenses() {
+    const { data } = await supabase
+      .from("expenses")
+      .select("*")
+      .eq("event_id", event_id);
+    if (data) setExpenses(data);
+  }
+
+  async function loadMembers() {
+    const { data: memberRows } = await supabase
+      .from("event_members")
+      .select("user_id")
+      .eq("event_id", event_id);
+
+    if (!memberRows || memberRows.length === 0) {
+      setMembers([]);
+      return;
+    }
+
+    const userIds = memberRows.map((m) => m.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username, display_name")
+      .in("id", userIds);
+
+    setMembers(profiles || []);
+  }
+
+  const memberNames = members.map((m) => m.display_name || "Unknown");
+
+  const { total, fairShare, payments } =
+    expenses.length > 0 && memberNames.length > 0
+      ? calculateSplit(
+          expenses.map((e) => ({
+            ...e,
+            paidBy: e.paid_by,
+            splitBetween: memberNames.length,
+          })),
+          memberNames,
+        )
+      : { total: 0, fairShare: 0, payments: [] };
 
   return (
     <View style={styles.container}>
@@ -52,6 +101,13 @@ export default function SettleScreen() {
             </View>
           </View>
         )}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {expenses.length === 0
+              ? "No expenses yet"
+              : "Everyone is settled up! 🎉"}
+          </Text>
+        }
       />
 
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -152,6 +208,12 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 13,
     fontWeight: "600",
+  },
+  empty: {
+    textAlign: "center",
+    color: "#888",
+    fontSize: 15,
+    marginTop: 40,
   },
   backButton: {
     borderRadius: 12,
