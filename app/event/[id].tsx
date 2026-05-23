@@ -14,11 +14,13 @@ export default function EventScreen() {
   const { id } = useLocalSearchParams();
   const [expenses, setExpenses] = useState([]);
   const [event, setEvent] = useState(null);
+  const [members, setMembers] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
       loadEvent();
       loadExpenses();
+      loadMembers();
     }, []),
   );
 
@@ -41,23 +43,47 @@ export default function EventScreen() {
     if (data) setExpenses(data);
   }
 
-  const members = ["Jake", "You", "Maria", "Chris"];
+  async function loadMembers() {
+    const { data: memberRows } = await supabase
+      .from("event_members")
+      .select("user_id")
+      .eq("event_id", id);
+
+    if (!memberRows || memberRows.length === 0) {
+      setMembers([]);
+      return;
+    }
+
+    const userIds = memberRows.map((m) => m.user_id);
+
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username, display_name")
+      .in("id", userIds);
+
+    setMembers(profiles || []);
+  }
+
+  const memberNames = members.map((m) => m.display_name || "Unknown");
+
   const { total, fairShare } =
-    expenses.length > 0
+    expenses.length > 0 && memberNames.length > 0
       ? calculateSplit(
           expenses.map((e) => ({
             ...e,
             paidBy: e.paid_by,
-            splitBetween: e.split_between,
+            splitBetween: memberNames.length,
           })),
-          members,
+          memberNames,
         )
       : { total: 0, fairShare: 0 };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{event?.name || "Loading..."}</Text>
-      <Text style={styles.subtitle}>{event?.date} · 4 people</Text>
+      <Text style={styles.subtitle}>
+        {event?.date} · {members.length} people
+      </Text>
 
       <View style={styles.summaryRow}>
         <View style={styles.summaryCard}>

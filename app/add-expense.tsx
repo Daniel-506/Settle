@@ -26,12 +26,26 @@ export default function AddExpenseScreen() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .single();
+
+    // Get the actual member count for this event ==== remove hard coded previous 4 group count
+    const { data: memberRows } = await supabase
+      .from("event_members")
+      .select("user_id")
+      .eq("event_id", event_id);
+
+    const memberCount = memberRows?.length || 1;
+
     const { error } = await supabase.from("expenses").insert({
       event_id,
       name,
       amount: parseFloat(amount),
-      paid_by: user.email,
-      split_between: 4,
+      paid_by: profile?.display_name || user.email,
+      split_between: memberCount,
     });
 
     if (error) {

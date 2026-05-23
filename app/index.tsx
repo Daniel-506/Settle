@@ -55,11 +55,18 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
       />
+
       <TouchableOpacity
         style={styles.newButton}
         onPress={() => router.push("/new-event")}
       >
         <Text style={styles.newButtonText}>+ New Event</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => supabase.auth.signOut()}>
+        <Text style={{ color: "red", textAlign: "center", marginBottom: 10 }}>
+          Log Out
+        </Text>
       </TouchableOpacity>
     </View>
   );
