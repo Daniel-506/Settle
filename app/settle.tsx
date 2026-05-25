@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import {
   FlatList,
   Linking,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -16,50 +17,53 @@ export default function SettleScreen() {
   const [expenses, setExpenses] = useState([]);
   const [members, setMembers] = useState([]);
   const [settledPayments, setSettledPayments] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeTab, setActiveTab] = useState("mine");
 
   useFocusEffect(
     useCallback(() => {
-      loadExpenses();
-      loadMembers();
-      loadSettledPayments();
+      loadAll();
     }, []),
   );
 
-  async function loadExpenses() {
-    const { data } = await supabase
+  async function loadAll() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .single();
+    const displayName = profile?.display_name || user.email;
+    setCurrentUser(displayName);
+
+    const { data: expenseData } = await supabase
       .from("expenses")
       .select("*")
       .eq("event_id", event_id);
-    if (data) setExpenses(data);
-  }
+    if (expenseData) setExpenses(expenseData);
 
-  async function loadMembers() {
     const { data: memberRows } = await supabase
       .from("event_members")
       .select("user_id")
       .eq("event_id", event_id);
 
-    if (!memberRows || memberRows.length === 0) {
-      setMembers([]);
-      return;
+    if (memberRows && memberRows.length > 0) {
+      const userIds = memberRows.map((m) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, paypal_username")
+        .in("id", userIds);
+      setMembers(profiles || []);
     }
 
-    const userIds = memberRows.map((m) => m.user_id);
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, username, display_name, paypal_username")
-      .in("id", userIds);
-
-    setMembers(profiles || []);
-  }
-
-  async function loadSettledPayments() {
-    const { data } = await supabase
+    const { data: settled } = await supabase
       .from("payments")
       .select("*")
       .eq("event_id", event_id)
       .eq("status", "paid");
-    if (data) setSettledPayments(data);
+    if (settled) setSettledPayments(settled);
   }
 
   async function markAsPaid(payment) {
@@ -70,7 +74,7 @@ export default function SettleScreen() {
       amount: payment.amount,
       status: "paid",
     });
-    loadSettledPayments();
+    loadAll();
   }
 
   async function openPayPal(payment) {
@@ -106,6 +110,92 @@ export default function SettleScreen() {
         )
       : { total: 0, fairShare: 0, payments: [] };
 
+  const iOwe = payments.filter((p) => p.from === currentUser);
+  const owedToMe = payments.filter((p) => p.to === currentUser);
+
+  const renderPaymentCard = (item) => {
+    const paid = isPaid(item);
+    const isMyDebt = item.from === currentUser;
+
+    return (
+      <View
+        key={`${item.from}-${item.to}`}
+        style={[styles.card, paid && styles.cardPaid]}
+      >
+        <View style={styles.cardLeft}>
+          <Text style={[styles.paymentText, paid && styles.paymentTextPaid]}>
+            <Text style={isMyDebt ? styles.youText : styles.fromName}>
+              {isMyDebt ? "You" : item.from}
+            </Text>
+            <Text style={styles.arrow}> → </Text>
+            <Text style={!isMyDebt ? styles.youText : styles.toName}>
+              {!isMyDebt ? "You" : item.to}
+            </Text>
+          </Text>
+          {paid && <Text style={styles.paidLabel}>✓ Settled</Text>}
+        </View>
+        <View style={styles.cardRight}>
+          <Text style={[styles.amount, paid && styles.amountPaid]}>
+            ${item.amount.toFixed(2)}
+          </Text>
+          {!paid && isMyDebt && (
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.paypalButton}
+                onPress={() => openPayPal(item)}
+              >
+                <Text style={styles.paypalButtonText}>PayPal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.payButton}
+                onPress={() => markAsPaid(item)}
+              >
+                <Text style={styles.payButtonText}>Mark Paid</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  const renderAllPayment = ({ item }) => {
+    const paid = isPaid(item);
+    return (
+      <View style={[styles.card, paid && styles.cardPaid]}>
+        <View style={styles.cardLeft}>
+          <Text style={[styles.paymentText, paid && styles.paymentTextPaid]}>
+            <Text style={styles.fromName}>{item.from}</Text>
+            <Text style={styles.arrow}> → </Text>
+            <Text style={styles.toName}>{item.to}</Text>
+          </Text>
+          {paid && <Text style={styles.paidLabel}>✓ Settled</Text>}
+        </View>
+        <View style={styles.cardRight}>
+          <Text style={[styles.amount, paid && styles.amountPaid]}>
+            ${item.amount.toFixed(2)}
+          </Text>
+          {!paid && (
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.paypalButton}
+                onPress={() => openPayPal(item)}
+              >
+                <Text style={styles.paypalButtonText}>PayPal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.payButton}
+                onPress={() => markAsPaid(item)}
+              >
+                <Text style={styles.payButtonText}>Mark Paid</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Settle Up</Text>
@@ -121,61 +211,68 @@ export default function SettleScreen() {
         </View>
       </View>
 
-      <Text style={styles.sectionLabel}>Payments needed</Text>
-
-      <FlatList
-        data={payments}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => {
-          const paid = isPaid(item);
-          return (
-            <View style={[styles.card, paid && styles.cardPaid]}>
-              <View style={styles.cardLeft}>
-                <Text
-                  style={[styles.paymentText, paid && styles.paymentTextPaid]}
-                >
-                  <Text style={[styles.fromName, paid && styles.paidName]}>
-                    {item.from}
-                  </Text>
-                  <Text style={styles.arrow}> → </Text>
-                  <Text style={[styles.toName, paid && styles.paidName]}>
-                    {item.to}
-                  </Text>
-                </Text>
-                {paid && <Text style={styles.paidLabel}>✓ Settled</Text>}
-              </View>
-              <View style={styles.cardRight}>
-                <Text style={[styles.amount, paid && styles.amountPaid]}>
-                  ${item.amount.toFixed(2)}
-                </Text>
-                {!paid && (
-                  <View style={styles.buttonRow}>
-                    <TouchableOpacity
-                      style={styles.paypalButton}
-                      onPress={() => openPayPal(item)}
-                    >
-                      <Text style={styles.paypalButtonText}>PayPal</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.payButton}
-                      onPress={() => markAsPaid(item)}
-                    >
-                      <Text style={styles.payButtonText}>Mark Paid</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            </View>
-          );
-        }}
-        ListEmptyComponent={
-          <Text style={styles.empty}>
-            {expenses.length === 0
-              ? "No expenses yet"
-              : "Everyone is settled up! 🎉"}
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "mine" && styles.activeTab]}
+          onPress={() => setActiveTab("mine")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "mine" && styles.activeTabText,
+            ]}
+          >
+            My Payments
           </Text>
-        }
-      />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "all" && styles.activeTab]}
+          onPress={() => setActiveTab("all")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "all" && styles.activeTabText,
+            ]}
+          >
+            All Payments
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === "mine" ? (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <Text style={styles.sectionHeader}>You owe</Text>
+          {iOwe.length === 0 ? (
+            <Text style={styles.empty}>You're all settled up! 🎉</Text>
+          ) : (
+            iOwe.map((item) => renderPaymentCard(item))
+          )}
+
+          <Text style={[styles.sectionHeader, { marginTop: 20 }]}>
+            Owed to you
+          </Text>
+          {owedToMe.length === 0 ? (
+            <Text style={styles.empty}>No one owes you right now</Text>
+          ) : (
+            owedToMe.map((item) => renderPaymentCard(item))
+          )}
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={payments}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={renderAllPayment}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {expenses.length === 0
+                ? "No expenses yet"
+                : "Everyone is settled up! 🎉"}
+            </Text>
+          }
+        />
+      )}
 
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Text style={styles.backButtonText}>Back to Event</Text>
@@ -199,7 +296,7 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   summaryCard: {
     flex: 1,
@@ -221,12 +318,39 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#534AB7",
   },
-  sectionLabel: {
+  tabs: {
+    flexDirection: "row",
+    backgroundColor: "#f9f9f9",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    borderWidth: 0.5,
+    borderColor: "#e0e0e0",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 10,
+  },
+  activeTab: {
+    backgroundColor: "#534AB7",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#888",
+  },
+  activeTabText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  sectionHeader: {
     fontSize: 12,
     color: "#888",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   card: {
     flexDirection: "row",
@@ -265,14 +389,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#A32D2D",
   },
-  arrow: {
-    color: "#888",
-  },
   toName: {
     fontWeight: "600",
     color: "#0F6E56",
   },
-  paidName: {
+  youText: {
+    fontWeight: "600",
+    color: "#534AB7",
+  },
+  arrow: {
     color: "#888",
   },
   paidLabel: {
@@ -316,7 +441,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#888",
     fontSize: 15,
-    marginTop: 40,
+    marginTop: 20,
+    marginBottom: 20,
   },
   backButton: {
     borderRadius: 12,
