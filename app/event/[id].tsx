@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -19,6 +19,7 @@ export default function EventScreen() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -27,6 +28,40 @@ export default function EventScreen() {
       loadMembers();
     }, []),
   );
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`event-${id}-${Date.now()}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "expenses",
+          filter: `event_id=eq.${id}`,
+        },
+        () => {
+          loadExpenses();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "event_members",
+          filter: `event_id=eq.${id}`,
+        },
+        () => {
+          loadMembers();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [id]);
 
   async function loadEvent() {
     const { data } = await supabase
@@ -68,6 +103,14 @@ export default function EventScreen() {
     setMembers(profiles || []);
   }
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadEvent();
+    await loadExpenses();
+    await loadMembers();
+    setRefreshing(false);
+  };
+
   const handleSearch = async (text) => {
     setMemberSearch(text);
     if (text.length < 2) {
@@ -81,7 +124,6 @@ export default function EventScreen() {
       .ilike("username", `%${text}%`)
       .limit(5);
 
-    // Filter out members already in the event
     const existingIds = members.map((m) => m.id);
     const filtered = (data || []).filter((p) => !existingIds.includes(p.id));
     setSearchResults(filtered);
@@ -178,18 +220,23 @@ export default function EventScreen() {
       <FlatList
         data={expenses}
         keyExtractor={(item) => item.id}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardLeft}>
               <Text style={styles.expenseName}>{item.name}</Text>
               <Text style={styles.expenseDetail}>
-                paid by {item.paid_by} · split {members.length} ways
+                paid by {item.paid_by} · split{" "}
+                {members.length > 0 ? members.length : "?"} ways
               </Text>
             </View>
             <View style={styles.cardRight}>
               <Text style={styles.amount}>${item.amount.toFixed(2)}</Text>
               <Text style={styles.perPerson}>
-                ${(item.amount / members.length).toFixed(2)} each
+                {members.length > 0
+                  ? `$${(item.amount / members.length).toFixed(2)} each`
+                  : ""}
               </Text>
             </View>
           </View>
@@ -321,7 +368,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

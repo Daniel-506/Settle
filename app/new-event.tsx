@@ -28,14 +28,11 @@ export default function NewEventScreen() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select("id, username, display_name")
         .ilike("username", `%${text}%`)
         .limit(5);
-
-      console.log("search results:", data);
-      console.log("search error:", error);
 
       if (data) setSearchResults(data);
     };

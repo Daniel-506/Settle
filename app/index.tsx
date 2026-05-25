@@ -12,27 +12,84 @@ import { supabase } from "../lib/supabase";
 export default function HomeScreen() {
   const [events, setEvents] = useState([]);
   const [session, setSession] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadEvents(session);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
-    // First get the session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       console.log("session:", session?.user?.email);
     });
   }, []);
 
-  useEffect(() => {
-    // Only fetch events once we have a session
-    if (!session) return;
+  async function loadEvents(currentSession = session) {
+    if (!currentSession) return;
 
-    async function loadEvents() {
-      const { data, error } = await supabase.from("events").select("*");
-      console.log("data:", data);
-      console.log("error:", error);
-      if (data) setEvents(data);
+    const { data: memberRows, error: memberError } = await supabase
+      .from("event_members")
+      .select("event_id")
+      .eq("user_id", currentSession.user.id);
+
+    console.log("memberRows for", currentSession.user.email, ":", memberRows);
+    console.log("memberError:", memberError);
+
+    const memberEventIds = (memberRows || []).map((m) => m.event_id);
+
+    const { data: createdEvents } = await supabase
+      .from("events")
+      .select("*")
+      .eq("created_by", currentSession.user.id);
+
+    let memberEvents = [];
+    if (memberEventIds.length > 0) {
+      const { data } = await supabase
+        .from("events")
+        .select("*")
+        .in("id", memberEventIds);
+      memberEvents = data || [];
     }
 
-    loadEvents();
+    const all = [...(createdEvents || []), ...memberEvents];
+    const unique = Array.from(new Map(all.map((e) => [e.id, e])).values());
+
+    console.log("events found:", unique.length);
+    setEvents(unique);
+  }
+
+  useEffect(() => {
+    if (!session) return;
+    loadEvents(session);
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel(`home-${Date.now()}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "event_members" },
+        () => {
+          loadEvents(session);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        () => {
+          loadEvents(session);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [session]);
 
   return (
@@ -47,6 +104,8 @@ export default function HomeScreen() {
       <FlatList
         data={events}
         keyExtractor={(item) => item.id}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
@@ -60,14 +119,12 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
       />
-
       <TouchableOpacity
         style={styles.newButton}
         onPress={() => router.push("/new-event")}
       >
         <Text style={styles.newButtonText}>+ New Event</Text>
       </TouchableOpacity>
-
       <TouchableOpacity onPress={() => supabase.auth.signOut()}>
         <Text style={{ color: "red", textAlign: "center", marginBottom: 10 }}>
           Log Out
