@@ -37,7 +37,12 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Split 💸</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Split 💸</Text>
+        <TouchableOpacity onPress={() => router.push("/profile")}>
+          <Text style={styles.profileButton}>Profile</Text>
+        </TouchableOpacity>
+      </View>
       <Text style={styles.subtitle}>Your events</Text>
       <FlatList
         data={events}
@@ -118,5 +123,16 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  profileButton: {
+    fontSize: 15,
+    color: "#534AB7",
+    fontWeight: "500",
   },
 });
