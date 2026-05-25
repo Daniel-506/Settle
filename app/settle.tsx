@@ -1,3 +1,4 @@
+import { setStringAsync } from "expo-clipboard";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -19,6 +20,7 @@ export default function SettleScreen() {
   const [settledPayments, setSettledPayments] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState("mine");
+  const [copied, setCopied] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -53,7 +55,7 @@ export default function SettleScreen() {
       const userIds = memberRows.map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, username, display_name, paypal_username")
+        .select("id, username, display_name, paypal_username, email")
         .in("id", userIds);
       setMembers(profiles || []);
     }
@@ -85,6 +87,17 @@ export default function SettleScreen() {
     }
     const url = `https://paypal.me/${recipient.paypal_username}/${payment.amount}`;
     Linking.openURL(url);
+  }
+
+  async function copyEmail(payment) {
+    const recipient = members.find((m) => m.display_name === payment.to);
+    if (!recipient?.email) {
+      alert(`${payment.to} hasn't set up their email yet`);
+      return;
+    }
+    await setStringAsync(recipient.email);
+    setCopied(payment.to);
+    setTimeout(() => setCopied(null), 2000);
   }
 
   function isPaid(payment) {
@@ -140,6 +153,14 @@ export default function SettleScreen() {
           </Text>
           {!paid && isMyDebt && (
             <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={() => copyEmail(item)}
+              >
+                <Text style={styles.copyButtonText}>
+                  {copied === item.to ? "Copied!" : "Copy Email"}
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.paypalButton}
                 onPress={() => openPayPal(item)}
@@ -456,5 +477,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#888",
     fontWeight: "500",
+  },
+
+  copyButton: {
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 0.5,
+    borderColor: "#e0e0e0",
+  },
+  copyButtonText: {
+    color: "#333",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

@@ -43,6 +43,7 @@ export default function SetupProfileScreen() {
       id: user.id,
       username: username.toLowerCase(),
       display_name: displayName,
+      email: user.email,
     });
 
     if (error) {

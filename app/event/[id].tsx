@@ -160,6 +160,12 @@ export default function EventScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ marginBottom: 4 }}
+          >
+            <Text style={styles.backLink}>← Events</Text>
+          </TouchableOpacity>
           <Text style={styles.title}>{event?.name || "Loading..."}</Text>
           <Text style={styles.subtitle}>
             {event?.date} · {members.length} people
@@ -418,5 +424,11 @@ const styles = StyleSheet.create({
   searchResultUsername: {
     fontSize: 13,
     color: "#888",
+  },
+
+  backLink: {
+    fontSize: 14,
+    color: "#534AB7",
+    fontWeight: "500",
   },
 });
