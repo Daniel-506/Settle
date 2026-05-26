@@ -196,7 +196,7 @@ export default function SettleScreen() {
           <Text style={[styles.amount, paid && styles.amountPaid]}>
             ${item.amount.toFixed(2)}
           </Text>
-          {!paid && (
+          {!paid && item.from === currentUser && (
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={styles.paypalButton}
