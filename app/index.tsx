@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,30 +14,31 @@ export default function HomeScreen() {
   const [events, setEvents] = useState([]);
   const [session, setSession] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadEvents(session);
-    setRefreshing(false);
-  };
+  const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      console.log("session:", session?.user?.email);
+      if (session) loadProfile(session);
     });
   }, []);
+
+  async function loadProfile(currentSession) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", currentSession.user.id)
+      .single();
+    if (data) setDisplayName(data.display_name || "");
+  }
 
   async function loadEvents(currentSession = session) {
     if (!currentSession) return;
 
-    const { data: memberRows, error: memberError } = await supabase
+    const { data: memberRows } = await supabase
       .from("event_members")
       .select("event_id")
       .eq("user_id", currentSession.user.id);
-
-    console.log("memberRows for", currentSession.user.email, ":", memberRows);
-    console.log("memberError:", memberError);
 
     const memberEventIds = (memberRows || []).map((m) => m.event_id);
 
@@ -56,8 +58,7 @@ export default function HomeScreen() {
 
     const all = [...(createdEvents || []), ...memberEvents];
     const unique = Array.from(new Map(all.map((e) => [e.id, e])).values());
-
-    console.log("events found:", unique.length);
+    unique.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     setEvents(unique);
   }
 
@@ -68,68 +69,103 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!session) return;
-
     const channel = supabase
       .channel(`home-${Date.now()}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "event_members" },
-        () => {
-          loadEvents(session);
-        },
+        () => loadEvents(session),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "events" },
-        () => {
-          loadEvents(session);
-        },
+        () => loadEvents(session),
       )
       .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
+    return () => channel.unsubscribe();
   }, [session]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadEvents(session);
+    setRefreshing(false);
+  };
+
+  const initials = displayName
+    ? displayName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "?";
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Split 💸</Text>
-        <TouchableOpacity onPress={() => router.push("/profile")}>
-          <Text style={styles.profileButton}>Profile</Text>
+      <View style={styles.header}>
+        <View style={styles.logoRow}>
+          <View style={styles.logoMark}>
+            <Text style={styles.logoText}>S</Text>
+          </View>
+          <Text style={styles.logoLabel}>Split</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={() => router.push("/profile")}
+        >
+          <Text style={styles.avatarText}>{initials}</Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.subtitle}>Your events</Text>
+
       <FlatList
         data={events}
         keyExtractor={(item) => item.id}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#A78BFA"
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.heroCard}>
+            <Text style={styles.heroLabel}>your events</Text>
+            <Text style={styles.heroCount}>{events.length} active</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => {
-              console.log("item:", item);
-              router.push(`/event/${item.id}`);
-            }}
+            onPress={() => router.push(`/event/${item.id}`)}
           >
-            <Text style={styles.eventName}>{item.name}</Text>
-            <Text style={styles.eventDetail}>{item.date}</Text>
+            <View style={styles.cardLeft}>
+              <Text style={styles.eventName}>{item.name}</Text>
+              <Text style={styles.eventDetail}>{item.date}</Text>
+            </View>
+            <View style={styles.cardRight}>
+              <Text style={styles.chevron}>›</Text>
+            </View>
           </TouchableOpacity>
         )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No events yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Create one to start splitting
+            </Text>
+          </View>
+        }
+        contentContainerStyle={{ paddingBottom: 100 }}
       />
-      <TouchableOpacity
-        style={styles.newButton}
-        onPress={() => router.push("/new-event")}
-      >
-        <Text style={styles.newButtonText}>+ New Event</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => supabase.auth.signOut()}>
-        <Text style={{ color: "red", textAlign: "center", marginBottom: 10 }}>
-          Log Out
-        </Text>
-      </TouchableOpacity>
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.newButton}
+          onPress={() => router.push("/new-event")}
+        >
+          <Text style={styles.newButtonText}>+ New Event</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -137,59 +173,141 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#0A0A0A",
     paddingTop: 60,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  title: {
-    fontSize: 40,
-    fontWeight: "bold",
-    marginBottom: 4,
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
-  subtitle: {
-    fontSize: 16,
-    color: "#888",
-    marginBottom: 24,
+  logoMark: {
+    width: 32,
+    height: 32,
+    backgroundColor: "#A78BFA",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoText: {
+    color: "#0A0A0A",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  logoLabel: {
+    color: "#FAFAFA",
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#2A2A2A",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 0.5,
+    borderColor: "#A78BFA",
+  },
+  avatarText: {
+    color: "#A78BFA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  heroCard: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 14,
+    padding: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
+  },
+  heroLabel: {
+    color: "#A1A1AA",
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  heroCount: {
+    color: "#A78BFA",
+    fontSize: 28,
+    fontWeight: "600",
   },
   card: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginHorizontal: 20,
+    marginBottom: 10,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    borderColor: "#2A2A2A",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardLeft: {
+    flex: 1,
+  },
+  cardRight: {
+    marginLeft: 8,
+  },
+  chevron: {
+    color: "#A78BFA",
+    fontSize: 22,
+    fontWeight: "300",
   },
   eventName: {
-    fontSize: 18,
+    color: "#FAFAFA",
+    fontSize: 15,
     fontWeight: "600",
     marginBottom: 4,
   },
   eventDetail: {
+    color: "#A1A1AA",
+    fontSize: 12,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingTop: 60,
+  },
+  emptyTitle: {
+    color: "#FAFAFA",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    color: "#A1A1AA",
     fontSize: 13,
-    color: "#888",
-    marginBottom: 8,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    backgroundColor: "#0A0A0A",
+    borderTopWidth: 0.5,
+    borderTopColor: "#1A1A1A",
   },
   newButton: {
-    backgroundColor: "#534AB7",
+    backgroundColor: "#A78BFA",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
-    marginVertical: 20,
   },
   newButtonText: {
-    color: "#fff",
+    color: "#0A0A0A",
     fontSize: 16,
-    fontWeight: "600",
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  profileButton: {
-    fontSize: 15,
-    color: "#534AB7",
-    fontWeight: "500",
+    fontWeight: "700",
   },
 });

@@ -55,31 +55,43 @@ export default function ProfileScreen() {
     router.replace("/login");
   }
 
+  const initials = profile?.display_name
+    ? profile.display_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "?";
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
+        <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
-      <Text style={styles.title}>Profile</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Display name</Text>
-        <Text style={styles.value}>{profile?.display_name || "—"}</Text>
+      <View style={styles.avatarSection}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        <Text style={styles.displayName}>{profile?.display_name || "—"}</Text>
+        <Text style={styles.username}>@{profile?.username || "—"}</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Username</Text>
-        <Text style={styles.value}>@{profile?.username || "—"}</Text>
+        <Text style={styles.cardLabel}>Email</Text>
+        <Text style={styles.cardValue}>{profile?.email || "—"}</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>PayPal username</Text>
+        <Text style={styles.cardLabel}>PayPal username</Text>
         <TextInput
           style={styles.input}
           placeholder="your paypal username"
+          placeholderTextColor="#A1A1AA"
           value={paypal}
           onChangeText={setPaypal}
           autoCapitalize="none"
@@ -105,71 +117,96 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#0A0A0A",
     paddingTop: 60,
     paddingHorizontal: 20,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
+  backButton: {
     marginBottom: 24,
   },
+  backText: {
+    color: "#A78BFA",
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  avatarSection: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#2A2A2A",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#A78BFA",
+    marginBottom: 12,
+  },
+  avatarText: {
+    color: "#A78BFA",
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  displayName: {
+    color: "#FAFAFA",
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  username: {
+    color: "#A78BFA",
+    fontSize: 14,
+  },
   card: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    borderColor: "#2A2A2A",
   },
-  label: {
-    fontSize: 12,
-    color: "#888",
+  cardLabel: {
+    color: "#A1A1AA",
+    fontSize: 11,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     marginBottom: 6,
   },
-  value: {
-    fontSize: 16,
+  cardValue: {
+    color: "#FAFAFA",
+    fontSize: 15,
     fontWeight: "500",
-    color: "#1A1A1A",
   },
   input: {
-    fontSize: 16,
-    color: "#1A1A1A",
+    color: "#FAFAFA",
+    fontSize: 15,
     paddingVertical: 4,
   },
   saveButton: {
-    backgroundColor: "#534AB7",
+    backgroundColor: "#A78BFA",
     borderRadius: 8,
     padding: 10,
     alignItems: "center",
     marginTop: 10,
   },
   saveButtonText: {
-    color: "#fff",
+    color: "#0A0A0A",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   logoutButton: {
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
-    marginTop: 12,
+    borderColor: "#2A2A2A",
+    marginTop: 8,
   },
   logoutButtonText: {
-    color: "#A32D2D",
+    color: "#F87171",
     fontSize: 16,
-    fontWeight: "500",
-  },
-  backButton: {
-    marginBottom: 16,
-  },
-  backButtonText: {
-    fontSize: 15,
-    color: "#534AB7",
     fontWeight: "500",
   },
 });

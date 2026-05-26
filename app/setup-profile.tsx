@@ -26,7 +26,6 @@ export default function SetupProfileScreen() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Check if username is taken
     const { data: existing } = await supabase
       .from("profiles")
       .select("username")
@@ -60,6 +59,12 @@ export default function SetupProfileScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <View style={styles.logoRow}>
+        <View style={styles.logoMark}>
+          <Text style={styles.logoText}>S</Text>
+        </View>
+      </View>
+
       <Text style={styles.title}>Set up your profile</Text>
       <Text style={styles.subtitle}>
         This is how friends will find you on Split
@@ -71,6 +76,7 @@ export default function SetupProfileScreen() {
       <TextInput
         style={styles.input}
         placeholder="e.g. Danny"
+        placeholderTextColor="#A1A1AA"
         value={displayName}
         onChangeText={setDisplayName}
         autoFocus
@@ -82,6 +88,7 @@ export default function SetupProfileScreen() {
         <TextInput
           style={styles.usernameInput}
           placeholder="yourname"
+          placeholderTextColor="#A1A1AA"
           value={username}
           onChangeText={(text) => setUsername(text.replace(/[^a-z0-9_]/g, ""))}
           autoCapitalize="none"
@@ -91,10 +98,15 @@ export default function SetupProfileScreen() {
         Only lowercase letters, numbers, and underscores
       </Text>
 
+      <View style={styles.spacer} />
+
       <TouchableOpacity
-        style={styles.saveButton}
+        style={[
+          styles.saveButton,
+          (!username || !displayName) && styles.saveButtonDisabled,
+        ]}
         onPress={handleSave}
-        disabled={loading}
+        disabled={loading || !username || !displayName}
       >
         <Text style={styles.saveButtonText}>
           {loading ? "Saving..." : "Continue"}
@@ -107,78 +119,106 @@ export default function SetupProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 100,
+    backgroundColor: "#0A0A0A",
     paddingHorizontal: 20,
+    paddingTop: 80,
+  },
+  logoRow: {
+    marginBottom: 32,
+  },
+  logoMark: {
+    width: 44,
+    height: 44,
+    backgroundColor: "#A78BFA",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoText: {
+    color: "#0A0A0A",
+    fontSize: 28,
+    fontWeight: "900",
   },
   title: {
+    color: "#FAFAFA",
     fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontWeight: "700",
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#888",
+    color: "#A1A1AA",
+    fontSize: 15,
     marginBottom: 40,
   },
   label: {
-    fontSize: 14,
-    color: "#888",
-    marginBottom: 8,
+    color: "#A1A1AA",
+    fontSize: 12,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    color: "#FAFAFA",
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    borderColor: "#2A2A2A",
     marginBottom: 24,
   },
   usernameRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    borderColor: "#2A2A2A",
     marginBottom: 8,
     paddingLeft: 16,
   },
   at: {
+    color: "#A78BFA",
     fontSize: 16,
-    color: "#534AB7",
     fontWeight: "600",
   },
   usernameInput: {
     flex: 1,
     padding: 16,
     fontSize: 16,
+    color: "#FAFAFA",
   },
   hint: {
+    color: "#A1A1AA",
     fontSize: 12,
-    color: "#aaa",
     marginBottom: 32,
   },
+  spacer: {
+    flex: 1,
+  },
   saveButton: {
-    backgroundColor: "#534AB7",
+    backgroundColor: "#A78BFA",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
+    marginBottom: 40,
+  },
+  saveButtonDisabled: {
+    opacity: 0.4,
   },
   saveButtonText: {
-    color: "#fff",
+    color: "#0A0A0A",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   error: {
-    color: "#A32D2D",
-    fontSize: 14,
+    color: "#F87171",
+    fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#FAEAEA",
+    backgroundColor: "#1A0A0A",
     borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: "#F87171",
   },
 });

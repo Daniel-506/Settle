@@ -6,6 +6,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
 
@@ -18,33 +19,19 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     setError("");
-
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-
-    if (error) {
-      setError(error.message);
-    }
-
+    if (error) setError(error.message);
     setLoading(false);
   };
 
   const handleSignUp = async () => {
     setLoading(true);
     setError("");
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError(error.message);
-    }
-    // Don't manually redirect — _layout.tsx will handle it based on profile check
-
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) setError(error.message);
     setLoading(false);
   };
 
@@ -53,15 +40,24 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <Text style={styles.title}>Split 💸</Text>
-      <Text style={styles.subtitle}>Hangouts without the math</Text>
+      <View style={styles.logoRow}>
+        <View style={styles.logoMark}>
+          <Text style={styles.logoText}>S</Text>
+        </View>
+        <Text style={styles.logoLabel}>Split</Text>
+      </View>
+
+      <Text style={styles.tagline}>Hangouts without the math</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <View style={styles.spacer} />
 
       <Text style={styles.label}>Email</Text>
       <TextInput
         style={styles.input}
         placeholder="you@email.com"
+        placeholderTextColor="#A1A1AA"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -72,6 +68,7 @@ export default function LoginScreen() {
       <TextInput
         style={styles.input}
         placeholder="password"
+        placeholderTextColor="#A1A1AA"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -96,6 +93,8 @@ export default function LoginScreen() {
           {loading ? "Loading..." : "Create Account"}
         </Text>
       </TouchableOpacity>
+
+      <View style={styles.spacer} />
     </KeyboardAvoidingView>
   );
 }
@@ -103,66 +102,92 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 100,
+    backgroundColor: "#0A0A0A",
     paddingHorizontal: 20,
+    paddingTop: 80,
   },
-  title: {
-    fontSize: 40,
-    fontWeight: "bold",
-    marginBottom: 4,
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
   },
-  subtitle: {
+  logoMark: {
+    width: 44,
+    height: 44,
+    backgroundColor: "#A78BFA",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoText: {
+    color: "#0A0A0A",
+    fontSize: 28,
+    fontWeight: "900",
+  },
+  logoLabel: {
+    color: "#FAFAFA",
+    fontSize: 32,
+    fontWeight: "700",
+  },
+  tagline: {
+    color: "#A1A1AA",
     fontSize: 16,
-    color: "#888",
     marginBottom: 40,
   },
+  spacer: {
+    flex: 1,
+  },
   label: {
-    fontSize: 14,
-    color: "#888",
-    marginBottom: 8,
+    color: "#A1A1AA",
+    fontSize: 12,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    color: "#FAFAFA",
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
-    marginBottom: 24,
+    borderColor: "#2A2A2A",
+    marginBottom: 20,
   },
   loginButton: {
-    backgroundColor: "#534AB7",
+    backgroundColor: "#A78BFA",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginBottom: 12,
   },
   loginButtonText: {
-    color: "#fff",
+    color: "#0A0A0A",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   signupButton: {
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     borderWidth: 0.5,
-    borderColor: "#534AB7",
+    borderColor: "#2A2A2A",
+    marginBottom: 20,
   },
   signupButtonText: {
-    color: "#534AB7",
+    color: "#A78BFA",
     fontSize: 16,
     fontWeight: "600",
   },
   error: {
-    color: "#A32D2D",
-    fontSize: 14,
+    color: "#F87171",
+    fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#FAEAEA",
+    backgroundColor: "#1A0A0A",
     borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: "#F87171",
   },
 });

@@ -85,8 +85,9 @@ export default function SettleScreen() {
       alert(`${payment.to} hasn't set up PayPal yet`);
       return;
     }
-    const url = `https://paypal.me/${recipient.paypal_username}/${payment.amount}`;
-    Linking.openURL(url);
+    Linking.openURL(
+      `https://paypal.me/${recipient.paypal_username}/${payment.amount}`,
+    );
   }
 
   async function copyEmail(payment) {
@@ -110,7 +111,6 @@ export default function SettleScreen() {
   }
 
   const memberNames = members.map((m) => m.display_name || "Unknown");
-
   const { total, fairShare, payments } =
     expenses.length > 0 && memberNames.length > 0
       ? calculateSplit(
@@ -158,7 +158,7 @@ export default function SettleScreen() {
                 onPress={() => copyEmail(item)}
               >
                 <Text style={styles.copyButtonText}>
-                  {copied === item.to ? "Copied!" : "Copy Email"}
+                  {copied === item.to ? "Copied!" : "Email"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -171,7 +171,7 @@ export default function SettleScreen() {
                 style={styles.payButton}
                 onPress={() => markAsPaid(item)}
               >
-                <Text style={styles.payButtonText}>Mark Paid</Text>
+                <Text style={styles.payButtonText}>Paid</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -208,7 +208,7 @@ export default function SettleScreen() {
                 style={styles.payButton}
                 onPress={() => markAsPaid(item)}
               >
-                <Text style={styles.payButtonText}>Mark Paid</Text>
+                <Text style={styles.payButtonText}>Paid</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -219,6 +219,10 @@ export default function SettleScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <Text style={styles.backText}>← Back</Text>
+      </TouchableOpacity>
+
       <Text style={styles.title}>Settle Up</Text>
 
       <View style={styles.summaryRow}>
@@ -269,7 +273,6 @@ export default function SettleScreen() {
           ) : (
             iOwe.map((item) => renderPaymentCard(item))
           )}
-
           <Text style={[styles.sectionHeader, { marginTop: 20 }]}>
             Owed to you
           </Text>
@@ -278,7 +281,7 @@ export default function SettleScreen() {
           ) : (
             owedToMe.map((item) => renderPaymentCard(item))
           )}
-          <View style={{ height: 20 }} />
+          <View style={{ height: 40 }} />
         </ScrollView>
       ) : (
         <FlatList
@@ -294,10 +297,6 @@ export default function SettleScreen() {
           }
         />
       )}
-
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backButtonText}>Back to Event</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -305,13 +304,22 @@ export default function SettleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#0A0A0A",
     paddingTop: 60,
     paddingHorizontal: 20,
   },
+  backButton: {
+    marginBottom: 16,
+  },
+  backText: {
+    color: "#A78BFA",
+    fontSize: 15,
+    fontWeight: "500",
+  },
   title: {
+    color: "#FAFAFA",
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "700",
     marginBottom: 20,
   },
   summaryRow: {
@@ -321,72 +329,72 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    borderColor: "#2A2A2A",
   },
   summaryLabel: {
-    fontSize: 12,
-    color: "#888",
-    marginBottom: 4,
+    color: "#A1A1AA",
+    fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    marginBottom: 6,
   },
   summaryAmount: {
+    color: "#A78BFA",
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#534AB7",
+    fontWeight: "700",
   },
   tabs: {
     flexDirection: "row",
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    borderColor: "#2A2A2A",
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
     alignItems: "center",
-    borderRadius: 10,
+    borderRadius: 9,
   },
   activeTab: {
-    backgroundColor: "#534AB7",
+    backgroundColor: "#A78BFA",
   },
   tabText: {
-    fontSize: 14,
+    color: "#A1A1AA",
+    fontSize: 13,
     fontWeight: "500",
-    color: "#888",
   },
   activeTabText: {
-    color: "#fff",
-    fontWeight: "600",
+    color: "#0A0A0A",
+    fontWeight: "700",
   },
   sectionHeader: {
-    fontSize: 12,
-    color: "#888",
+    color: "#A1A1AA",
+    fontSize: 11,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 8,
+    letterSpacing: 0.8,
+    marginBottom: 10,
   },
   card: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 0.5,
-    borderColor: "#e0e0e0",
   },
   cardPaid: {
-    backgroundColor: "#E1F5EE",
-    borderColor: "#0F6E56",
+    backgroundColor: "#0A1A12",
+    borderColor: "#34D399",
     opacity: 0.7,
   },
   cardLeft: {
@@ -408,88 +416,74 @@ const styles = StyleSheet.create({
   },
   fromName: {
     fontWeight: "600",
-    color: "#A32D2D",
+    color: "#F87171",
   },
   toName: {
     fontWeight: "600",
-    color: "#0F6E56",
+    color: "#34D399",
   },
   youText: {
     fontWeight: "600",
-    color: "#534AB7",
+    color: "#A78BFA",
   },
   arrow: {
-    color: "#888",
+    color: "#A1A1AA",
   },
   paidLabel: {
+    color: "#34D399",
     fontSize: 11,
-    color: "#0F6E56",
     fontWeight: "600",
     marginTop: 4,
   },
   amount: {
+    color: "#A78BFA",
     fontSize: 16,
     fontWeight: "600",
-    color: "#534AB7",
   },
   amountPaid: {
-    color: "#888",
+    color: "#A1A1AA",
     textDecorationLine: "line-through",
   },
-  payButton: {
-    backgroundColor: "#534AB7",
+  copyButton: {
+    backgroundColor: "#2A2A2A",
     borderRadius: 8,
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
+    borderWidth: 0.5,
+    borderColor: "#3A3A3A",
   },
-  payButtonText: {
-    color: "#fff",
-    fontSize: 12,
+  copyButtonText: {
+    color: "#FAFAFA",
+    fontSize: 11,
     fontWeight: "600",
   },
   paypalButton: {
     backgroundColor: "#0070BA",
     borderRadius: 8,
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   paypalButtonText: {
-    color: "#fff",
-    fontSize: 12,
+    color: "#FAFAFA",
+    fontSize: 11,
     fontWeight: "600",
   },
-  empty: {
-    textAlign: "center",
-    color: "#888",
-    fontSize: 15,
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  backButton: {
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginVertical: 20,
-    borderWidth: 0.5,
-    borderColor: "#e0e0e0",
-  },
-  backButtonText: {
-    fontSize: 15,
-    color: "#888",
-    fontWeight: "500",
-  },
-
-  copyButton: {
-    backgroundColor: "#f0f0f0",
+  payButton: {
+    backgroundColor: "#A78BFA",
     borderRadius: 8,
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    paddingHorizontal: 10,
   },
-  copyButtonText: {
-    color: "#333",
-    fontSize: 12,
-    fontWeight: "600",
+  payButtonText: {
+    color: "#0A0A0A",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  empty: {
+    color: "#A1A1AA",
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 20,
+    marginBottom: 20,
   },
 });

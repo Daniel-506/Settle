@@ -21,33 +21,16 @@ export default function NewEventScreen() {
   const [error, setError] = useState("");
 
   const handleSearch = async (text) => {
-    const handleSearch = async (text) => {
-      setMemberSearch(text);
-      if (text.length < 2) {
-        setSearchResults([]);
-        return;
-      }
-
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, username, display_name")
-        .ilike("username", `%${text}%`)
-        .limit(5);
-
-      if (data) setSearchResults(data);
-    };
     setMemberSearch(text);
     if (text.length < 2) {
       setSearchResults([]);
       return;
     }
-
     const { data } = await supabase
       .from("profiles")
       .select("id, username, display_name")
       .ilike("username", `%${text}%`)
       .limit(5);
-
     if (data) setSearchResults(data);
   };
 
@@ -71,7 +54,6 @@ export default function NewEventScreen() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Create the event
     const { data: event, error: eventError } = await supabase
       .from("events")
       .insert({
@@ -92,14 +74,12 @@ export default function NewEventScreen() {
       return;
     }
 
-    // Add creator as member
     await supabase.from("event_members").insert({
       event_id: event.id,
       user_id: user.id,
       status: "active",
     });
 
-    // Add other members
     for (const member of members) {
       await supabase.from("event_members").insert({
         event_id: event.id,
@@ -119,6 +99,13 @@ export default function NewEventScreen() {
     >
       {step === 1 ? (
         <>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+
           <Text style={styles.title}>New Event</Text>
           <Text style={styles.subtitle}>What are you splitting today?</Text>
 
@@ -128,13 +115,19 @@ export default function NewEventScreen() {
           <TextInput
             style={styles.input}
             placeholder="e.g. Sushi Night, BBQ, Road Trip"
+            placeholderTextColor="#A1A1AA"
             value={name}
             onChangeText={setName}
             autoFocus
           />
 
+          <View style={styles.spacer} />
+
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={[
+              styles.primaryButton,
+              !name && styles.primaryButtonDisabled,
+            ]}
             onPress={() => {
               if (!name) return;
               setStep(2);
@@ -152,6 +145,13 @@ export default function NewEventScreen() {
         </>
       ) : (
         <>
+          <TouchableOpacity
+            onPress={() => setStep(1)}
+            style={styles.backButton}
+          >
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+
           <Text style={styles.title}>Add Members</Text>
           <Text style={styles.subtitle}>Who's splitting with you?</Text>
 
@@ -159,6 +159,7 @@ export default function NewEventScreen() {
           <TextInput
             style={styles.input}
             placeholder="@username"
+            placeholderTextColor="#A1A1AA"
             value={memberSearch}
             onChangeText={handleSearch}
             autoCapitalize="none"
@@ -189,14 +190,21 @@ export default function NewEventScreen() {
               <Text style={styles.label}>Members added</Text>
               {members.map((member) => (
                 <View key={member.id} style={styles.memberRow}>
+                  <View style={styles.memberAvatar}>
+                    <Text style={styles.memberAvatarText}>
+                      {member.display_name?.[0]?.toUpperCase() || "?"}
+                    </Text>
+                  </View>
                   <Text style={styles.memberName}>{member.display_name}</Text>
                   <TouchableOpacity onPress={() => removeMember(member.id)}>
-                    <Text style={styles.removeButton}>Remove</Text>
+                    <Text style={styles.removeButton}>✕</Text>
                   </TouchableOpacity>
                 </View>
               ))}
             </>
           )}
+
+          <View style={styles.spacer} />
 
           <TouchableOpacity
             style={styles.primaryButton}
@@ -223,107 +231,143 @@ export default function NewEventScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 100,
+    backgroundColor: "#0A0A0A",
     paddingHorizontal: 20,
+    paddingTop: 60,
+  },
+  backButton: {
+    marginBottom: 24,
+  },
+  backText: {
+    color: "#A78BFA",
+    fontSize: 15,
+    fontWeight: "500",
   },
   title: {
+    color: "#FAFAFA",
     fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 4,
+    fontWeight: "700",
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#888",
+    color: "#A1A1AA",
+    fontSize: 15,
     marginBottom: 40,
   },
   label: {
-    fontSize: 14,
-    color: "#888",
-    marginBottom: 8,
+    color: "#A1A1AA",
+    fontSize: 12,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    color: "#FAFAFA",
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
-    marginBottom: 24,
+    borderColor: "#2A2A2A",
+    marginBottom: 16,
   },
   searchResults: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
-    marginBottom: 24,
+    borderColor: "#2A2A2A",
+    marginBottom: 20,
     overflow: "hidden",
   },
   searchResult: {
-    padding: 16,
+    padding: 14,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#e0e0e0",
+    borderBottomColor: "#2A2A2A",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   searchResultName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
+    color: "#FAFAFA",
+    fontSize: 14,
+    fontWeight: "500",
   },
   searchResultUsername: {
+    color: "#A78BFA",
     fontSize: 13,
-    color: "#888",
   },
   memberRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#EEEDFE",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     marginBottom: 8,
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
+    gap: 12,
+  },
+  memberAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#2A2A2A",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 0.5,
+    borderColor: "#A78BFA",
+  },
+  memberAvatarText: {
+    color: "#A78BFA",
+    fontSize: 13,
+    fontWeight: "600",
   },
   memberName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#534AB7",
+    color: "#FAFAFA",
+    fontSize: 14,
+    fontWeight: "500",
+    flex: 1,
   },
   removeButton: {
-    fontSize: 13,
-    color: "#A32D2D",
+    color: "#F87171",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  spacer: {
+    flex: 1,
   },
   primaryButton: {
-    backgroundColor: "#534AB7",
+    backgroundColor: "#A78BFA",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginBottom: 12,
-    marginTop: 8,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.4,
   },
   primaryButtonText: {
-    color: "#fff",
+    color: "#0A0A0A",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   cancelButton: {
-    borderRadius: 12,
     padding: 16,
     alignItems: "center",
+    marginBottom: 20,
   },
   cancelButtonText: {
-    color: "#888",
-    fontSize: 16,
+    color: "#A1A1AA",
+    fontSize: 15,
   },
   error: {
-    color: "#A32D2D",
-    fontSize: 14,
+    color: "#F87171",
+    fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#FAEAEA",
+    backgroundColor: "#1A0A0A",
     borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: "#F87171",
   },
 });

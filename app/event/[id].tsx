@@ -2,6 +2,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -40,9 +41,7 @@ export default function EventScreen() {
           table: "expenses",
           filter: `event_id=eq.${id}`,
         },
-        () => {
-          loadExpenses();
-        },
+        () => loadExpenses(),
       )
       .on(
         "postgres_changes",
@@ -52,15 +51,10 @@ export default function EventScreen() {
           table: "event_members",
           filter: `event_id=eq.${id}`,
         },
-        () => {
-          loadMembers();
-        },
+        () => loadMembers(),
       )
       .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
+    return () => channel.unsubscribe();
   }, [id]);
 
   async function loadEvent() {
@@ -73,12 +67,10 @@ export default function EventScreen() {
   }
 
   async function loadExpenses() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("expenses")
       .select("*")
       .eq("event_id", id);
-    console.log("expenses:", data);
-    console.log("error:", error);
     if (data) setExpenses(data);
   }
 
@@ -87,19 +79,15 @@ export default function EventScreen() {
       .from("event_members")
       .select("user_id")
       .eq("event_id", id);
-
     if (!memberRows || memberRows.length === 0) {
       setMembers([]);
       return;
     }
-
     const userIds = memberRows.map((m) => m.user_id);
-
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, username, display_name")
       .in("id", userIds);
-
     setMembers(profiles || []);
   }
 
@@ -117,25 +105,19 @@ export default function EventScreen() {
       setSearchResults([]);
       return;
     }
-
     const { data } = await supabase
       .from("profiles")
       .select("id, username, display_name")
       .ilike("username", `%${text}%`)
       .limit(5);
-
     const existingIds = members.map((m) => m.id);
-    const filtered = (data || []).filter((p) => !existingIds.includes(p.id));
-    setSearchResults(filtered);
+    setSearchResults((data || []).filter((p) => !existingIds.includes(p.id)));
   };
 
   const addMemberToEvent = async (profile) => {
-    await supabase.from("event_members").insert({
-      event_id: id,
-      user_id: profile.id,
-      status: "active",
-    });
-
+    await supabase
+      .from("event_members")
+      .insert({ event_id: id, user_id: profile.id, status: "active" });
     setMemberSearch("");
     setSearchResults([]);
     setShowAddMember(false);
@@ -143,7 +125,6 @@ export default function EventScreen() {
   };
 
   const memberNames = members.map((m) => m.display_name || "Unknown");
-
   const { total, fairShare } =
     expenses.length > 0 && memberNames.length > 0
       ? calculateSplit(
@@ -159,75 +140,94 @@ export default function EventScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ marginBottom: 4 }}
-          >
-            <Text style={styles.backLink}>← Events</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>{event?.name || "Loading..."}</Text>
-          <Text style={styles.subtitle}>
-            {event?.date} · {members.length} people
-          </Text>
-        </View>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backLink}>← Events</Text>
+        </TouchableOpacity>
         <TouchableOpacity
-          style={styles.addMemberButton}
+          style={[
+            styles.addMemberButton,
+            showAddMember && styles.addMemberButtonActive,
+          ]}
           onPress={() => setShowAddMember(!showAddMember)}
         >
-          <Text style={styles.addMemberButtonText}>
+          <Text
+            style={[
+              styles.addMemberButtonText,
+              showAddMember && styles.addMemberButtonTextActive,
+            ]}
+          >
             {showAddMember ? "Cancel" : "+ Add"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {showAddMember && (
-        <View>
-          <TextInput
-            style={styles.input}
-            placeholder="Search by username..."
-            value={memberSearch}
-            onChangeText={handleSearch}
-            autoCapitalize="none"
-            autoFocus
-          />
-          {searchResults.length > 0 && (
-            <View style={styles.searchResults}>
-              {searchResults.map((profile) => (
-                <TouchableOpacity
-                  key={profile.id}
-                  style={styles.searchResult}
-                  onPress={() => addMemberToEvent(profile)}
-                >
-                  <Text style={styles.searchResultName}>
-                    {profile.display_name}
-                  </Text>
-                  <Text style={styles.searchResultUsername}>
-                    @{profile.username}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Total</Text>
-          <Text style={styles.summaryAmount}>${total.toFixed(2)}</Text>
-        </View>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Each owes</Text>
-          <Text style={styles.summaryAmount}>${fairShare.toFixed(2)}</Text>
-        </View>
-      </View>
-
       <FlatList
         data={expenses}
         keyExtractor={(item) => item.id}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#A78BFA"
+          />
+        }
+        ListHeaderComponent={
+          <View>
+            <Text style={styles.title}>{event?.name || "Loading..."}</Text>
+            <Text style={styles.subtitle}>
+              {event?.date} · {members.length} people
+            </Text>
+
+            {showAddMember && (
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search by username..."
+                  placeholderTextColor="#A1A1AA"
+                  value={memberSearch}
+                  onChangeText={handleSearch}
+                  autoCapitalize="none"
+                  autoFocus
+                />
+                {searchResults.length > 0 && (
+                  <View style={styles.searchResults}>
+                    {searchResults.map((profile) => (
+                      <TouchableOpacity
+                        key={profile.id}
+                        style={styles.searchResult}
+                        onPress={() => addMemberToEvent(profile)}
+                      >
+                        <Text style={styles.searchResultName}>
+                          {profile.display_name}
+                        </Text>
+                        <Text style={styles.searchResultUsername}>
+                          @{profile.username}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Total</Text>
+                <Text style={styles.summaryAmount}>${total.toFixed(2)}</Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Each owes</Text>
+                <Text style={styles.summaryAmount}>
+                  ${fairShare.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+
+            {expenses.length > 0 && (
+              <Text style={styles.sectionLabel}>Expenses</Text>
+            )}
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardLeft}>
@@ -247,6 +247,13 @@ export default function EventScreen() {
             </View>
           </View>
         )}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No expenses yet</Text>
+            <Text style={styles.emptySubtitle}>Add the first one below</Text>
+          </View>
+        }
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
       />
 
       <View style={styles.footer}>
@@ -270,19 +277,87 @@ export default function EventScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#0A0A0A",
     paddingTop: 60,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  backLink: {
+    color: "#A78BFA",
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  addMemberButton: {
+    borderRadius: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderWidth: 0.5,
+    borderColor: "#A78BFA",
+  },
+  addMemberButtonActive: {
+    backgroundColor: "#2A2A2A",
+    borderColor: "#A1A1AA",
+  },
+  addMemberButtonText: {
+    color: "#A78BFA",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  addMemberButtonTextActive: {
+    color: "#A1A1AA",
   },
   title: {
+    color: "#FAFAFA",
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "700",
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
-    color: "#888",
+    color: "#A1A1AA",
+    fontSize: 13,
+    marginBottom: 20,
+  },
+  searchContainer: {
     marginBottom: 16,
+  },
+  searchInput: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 15,
+    color: "#FAFAFA",
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
+    marginBottom: 6,
+  },
+  searchResults: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
+    overflow: "hidden",
+  },
+  searchResult: {
+    padding: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#2A2A2A",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  searchResultName: {
+    color: "#FAFAFA",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  searchResultUsername: {
+    color: "#A78BFA",
+    fontSize: 13,
   },
   summaryRow: {
     flexDirection: "row",
@@ -291,34 +366,41 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    borderColor: "#2A2A2A",
   },
   summaryLabel: {
-    fontSize: 12,
-    color: "#888",
-    marginBottom: 4,
+    color: "#A1A1AA",
+    fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    marginBottom: 6,
   },
   summaryAmount: {
+    color: "#A78BFA",
     fontSize: 24,
-    fontWeight: "bold",
-    color: "#534AB7",
+    fontWeight: "700",
+  },
+  sectionLabel: {
+    color: "#A1A1AA",
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 10,
   },
   card: {
+    backgroundColor: "#1A1A1A",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 0.5,
-    borderColor: "#e0e0e0",
   },
   cardLeft: {
     flex: 1,
@@ -327,108 +409,75 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   expenseName: {
-    fontSize: 16,
+    color: "#FAFAFA",
+    fontSize: 15,
     fontWeight: "600",
     marginBottom: 4,
   },
   expenseDetail: {
+    color: "#A1A1AA",
     fontSize: 12,
-    color: "#888",
   },
   amount: {
+    color: "#A78BFA",
     fontSize: 16,
     fontWeight: "600",
-    color: "#534AB7",
   },
   perPerson: {
-    fontSize: 12,
-    color: "#888",
+    color: "#A1A1AA",
+    fontSize: 11,
     marginTop: 2,
   },
+  emptyState: {
+    alignItems: "center",
+    paddingTop: 40,
+  },
+  emptyTitle: {
+    color: "#FAFAFA",
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    color: "#A1A1AA",
+    fontSize: 13,
+  },
   footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
-    gap: 12,
-    paddingVertical: 20,
+    gap: 10,
+    padding: 20,
+    backgroundColor: "#0A0A0A",
+    borderTopWidth: 0.5,
+    borderTopColor: "#1A1A1A",
   },
   addButton: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
   },
   addButtonText: {
+    color: "#FAFAFA",
     fontSize: 15,
     fontWeight: "600",
-    color: "#333",
   },
   settleButton: {
     flex: 1,
-    backgroundColor: "#534AB7",
+    backgroundColor: "#A78BFA",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
   },
   settleButtonText: {
+    color: "#0A0A0A",
     fontSize: 15,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  addMemberButton: {
-    backgroundColor: "#534AB7",
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  addMemberButtonText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  input: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    borderWidth: 0.5,
-    borderColor: "#e0e0e0",
-    marginBottom: 8,
-  },
-  searchResults: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: "#e0e0e0",
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-  searchResult: {
-    padding: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#e0e0e0",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  searchResultName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
-  },
-  searchResultUsername: {
-    fontSize: 13,
-    color: "#888",
-  },
-
-  backLink: {
-    fontSize: 14,
-    color: "#534AB7",
-    fontWeight: "500",
+    fontWeight: "700",
   },
 });

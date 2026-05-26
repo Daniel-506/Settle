@@ -7,6 +7,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
 
@@ -32,7 +33,6 @@ export default function AddExpenseScreen() {
       .eq("id", user.id)
       .single();
 
-    // Get the actual member count for this event ==== remove hard coded previous 4 group count
     const { data: memberRows } = await supabase
       .from("event_members")
       .select("user_id")
@@ -62,6 +62,10 @@ export default function AddExpenseScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <Text style={styles.backText}>← Back</Text>
+      </TouchableOpacity>
+
       <Text style={styles.title}>Add Expense</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -70,26 +74,34 @@ export default function AddExpenseScreen() {
       <TextInput
         style={styles.input}
         placeholder="e.g. Drinks, Salmon, Pizza"
+        placeholderTextColor="#A1A1AA"
         value={name}
-        onChangeText={(text) => setName(text)}
+        onChangeText={setName}
+        autoFocus
       />
 
       <Text style={styles.label}>How much did it cost?</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="0.00"
-        value={amount}
-        onChangeText={(text) => {
-          const filtered = text.replace(/[^0-9.]/g, "");
-          setAmount(filtered);
-        }}
-        keyboardType="decimal-pad"
-      />
+      <View style={styles.amountRow}>
+        <Text style={styles.dollarSign}>$</Text>
+        <TextInput
+          style={styles.amountInput}
+          placeholder="0.00"
+          placeholderTextColor="#A1A1AA"
+          value={amount}
+          onChangeText={(text) => setAmount(text.replace(/[^0-9.]/g, ""))}
+          keyboardType="decimal-pad"
+        />
+      </View>
+
+      <View style={styles.spacer} />
 
       <TouchableOpacity
-        style={styles.addButton}
+        style={[
+          styles.addButton,
+          (!name || !amount) && styles.addButtonDisabled,
+        ]}
         onPress={handleAdd}
-        disabled={loading}
+        disabled={loading || !name || !amount}
       >
         <Text style={styles.addButtonText}>
           {loading ? "Adding..." : "Add Expense"}
@@ -109,58 +121,98 @@ export default function AddExpenseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#0A0A0A",
     paddingTop: 60,
     paddingHorizontal: 20,
   },
+  backButton: {
+    marginBottom: 20,
+  },
+  backText: {
+    color: "#A78BFA",
+    fontSize: 15,
+    fontWeight: "500",
+  },
   title: {
+    color: "#FAFAFA",
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "700",
     marginBottom: 32,
   },
   label: {
-    fontSize: 14,
-    color: "#888",
-    marginBottom: 8,
+    color: "#A1A1AA",
+    fontSize: 12,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#1A1A1A",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    color: "#FAFAFA",
     borderWidth: 0.5,
-    borderColor: "#e0e0e0",
+    borderColor: "#2A2A2A",
     marginBottom: 24,
   },
+  amountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1A1A1A",
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: "#2A2A2A",
+    marginBottom: 24,
+    paddingLeft: 16,
+  },
+  dollarSign: {
+    color: "#A78BFA",
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  amountInput: {
+    flex: 1,
+    padding: 16,
+    fontSize: 20,
+    color: "#FAFAFA",
+    fontWeight: "500",
+  },
+  spacer: {
+    flex: 1,
+  },
   addButton: {
-    backgroundColor: "#534AB7",
+    backgroundColor: "#A78BFA",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginBottom: 12,
   },
+  addButtonDisabled: {
+    opacity: 0.4,
+  },
   addButtonText: {
-    color: "#fff",
+    color: "#0A0A0A",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   cancelButton: {
-    borderRadius: 12,
     padding: 16,
     alignItems: "center",
+    marginBottom: 20,
   },
   cancelButtonText: {
-    color: "#888",
-    fontSize: 16,
+    color: "#A1A1AA",
+    fontSize: 15,
   },
   error: {
-    color: "#A32D2D",
-    fontSize: 14,
+    color: "#F87171",
+    fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#FAEAEA",
+    backgroundColor: "#1A0A0A",
     borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: "#F87171",
   },
 });
