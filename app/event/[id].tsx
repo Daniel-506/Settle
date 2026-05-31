@@ -144,17 +144,33 @@ export default function EventScreen() {
   };
 
   const memberNames = members.map((m) => m.display_name || "Unknown");
-  const { total, fairShare } =
+  const memberIdToName = {};
+  members.forEach((m) => {
+    memberIdToName[m.id] = m.display_name;
+  });
+
+  const currentUserName = members.find(
+    (m) => m.id === currentUserId,
+  )?.display_name;
+
+  const { total, shouldPay } =
     expenses.length > 0 && memberNames.length > 0
       ? calculateSplit(
           expenses.map((e) => ({
             ...e,
             paidBy: e.paid_by,
-            splitBetween: memberNames.length,
+            splitMembers: e.split_member_ids
+              ? e.split_member_ids
+                  .map((uid) => memberIdToName[uid])
+                  .filter(Boolean)
+              : memberNames,
+            customSplits: e.custom_splits || {},
           })),
           memberNames,
         )
-      : { total: 0, fairShare: 0 };
+      : { total: 0, shouldPay: {} };
+
+  const yourShare = currentUserName ? shouldPay[currentUserName] || 0 : 0;
 
   const getInitials = (name) =>
     name
@@ -204,9 +220,9 @@ export default function EventScreen() {
                   <Text style={styles.summaryAmount}>${total.toFixed(2)}</Text>
                 </View>
                 <View style={styles.summaryCard}>
-                  <Text style={styles.summaryLabel}>Each owes</Text>
+                  <Text style={styles.summaryLabel}>Your share</Text>
                   <Text style={styles.summaryAmount}>
-                    ${fairShare.toFixed(2)}
+                    ${yourShare.toFixed(2)}
                   </Text>
                 </View>
               </View>
@@ -217,7 +233,10 @@ export default function EventScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push(`/edit-expense?id=${item.id}`)}
+            >
               <View style={styles.cardLeft}>
                 <Text style={styles.expenseName}>{item.name}</Text>
                 <Text style={styles.expenseDetail}>
@@ -233,7 +252,7 @@ export default function EventScreen() {
                     : ""}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <View style={styles.emptyState}>

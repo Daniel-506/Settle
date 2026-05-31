@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,8 +13,8 @@ import {
 } from "react-native";
 import { supabase } from "../lib/supabase";
 
-export default function AddExpenseScreen() {
-  const { event_id } = useLocalSearchParams();
+export default function EditExpenseScreen() {
+  const { id } = useLocalSearchParams();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,21 +24,34 @@ export default function AddExpenseScreen() {
   const [customSplits, setCustomSplits] = useState({});
   const [showCustom, setShowCustom] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [eventId, setEventId] = useState(null);
 
   useEffect(() => {
-    loadMembers();
+    loadExpense();
   }, []);
 
-  async function loadMembers() {
+  async function loadExpense() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     setCurrentUserId(user?.id);
 
+    const { data: expense } = await supabase
+      .from("expenses")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!expense) return;
+
+    setName(expense.name);
+    setAmount(expense.amount.toString());
+    setEventId(expense.event_id);
+
     const { data: memberRows } = await supabase
       .from("event_members")
       .select("user_id")
-      .eq("event_id", event_id);
+      .eq("event_id", expense.event_id);
 
     if (!memberRows || memberRows.length === 0) return;
 
@@ -49,7 +63,21 @@ export default function AddExpenseScreen() {
 
     if (profiles) {
       setAllMembers(profiles);
-      setSelectedIds(profiles.map((p) => p.id));
+
+      // Pre-select members from split_member_ids
+      const splitIds = expense.split_member_ids || profiles.map((p) => p.id);
+      setSelectedIds(splitIds);
+
+      // Convert custom_splits from {name: amount} to {id: amount}
+      if (expense.custom_splits) {
+        const customById = {};
+        Object.entries(expense.custom_splits).forEach(([displayName, amt]) => {
+          const m = profiles.find((p) => p.display_name === displayName);
+          if (m) customById[m.id] = amt.toString();
+        });
+        setCustomSplits(customById);
+        if (Object.keys(customById).length > 0) setShowCustom(true);
+      }
     }
   }
 
@@ -84,7 +112,7 @@ export default function AddExpenseScreen() {
     }
   };
 
-  const handleAdd = async () => {
+  const handleSave = async () => {
     if (!name || !amount || selectedIds.length === 0) {
       setError("Please fill in name, amount, and select at least one member.");
       return;
@@ -93,16 +121,6 @@ export default function AddExpenseScreen() {
     setLoading(true);
     setError("");
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .single();
-
-    // Convert customSplits from {id: stringAmount} to {displayName: number}
     const customSplitsByName = {};
     Object.entries(customSplits).forEach(([id, amt]) => {
       const member = allMembers.find((m) => m.id === id);
@@ -111,23 +129,16 @@ export default function AddExpenseScreen() {
       }
     });
 
-    // Get display names of selected members
-    const splitMemberNames = selectedIds
-      .map((id) => {
-        const m = allMembers.find((mem) => mem.id === id);
-        return m?.display_name;
+    const { error } = await supabase
+      .from("expenses")
+      .update({
+        name,
+        amount: parseFloat(amount),
+        split_between: selectedIds.length,
+        split_member_ids: selectedIds,
+        custom_splits: customSplitsByName,
       })
-      .filter(Boolean);
-
-    const { error } = await supabase.from("expenses").insert({
-      event_id,
-      name,
-      amount: parseFloat(amount),
-      paid_by: profile?.display_name || user.email,
-      split_between: selectedIds.length,
-      split_member_ids: selectedIds,
-      custom_splits: customSplitsByName,
-    });
+      .eq("id", id);
 
     if (error) {
       setError(error.message);
@@ -136,6 +147,20 @@ export default function AddExpenseScreen() {
     }
 
     setLoading(false);
+  };
+
+  const handleDelete = () => {
+    Alert.alert("Delete Expense", "Are you sure? This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await supabase.from("expenses").delete().eq("id", id);
+          router.back();
+        },
+      },
+    ]);
   };
 
   const getInitials = (name) =>
@@ -150,10 +175,7 @@ export default function AddExpenseScreen() {
     (sum, v) => sum + (parseFloat(v) || 0),
     0,
   );
-  const remainingMembers = selectedIds.filter((id) => {
-    const m = allMembers.find((mem) => mem.id === id);
-    return m && !customSplits[id];
-  });
+  const remainingMembers = selectedIds.filter((id) => !customSplits[id]);
   const totalAmount = parseFloat(amount) || 0;
   const evenShare =
     remainingMembers.length > 0
@@ -170,7 +192,7 @@ export default function AddExpenseScreen() {
       </TouchableOpacity>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Add Expense</Text>
+        <Text style={styles.title}>Edit Expense</Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -181,7 +203,6 @@ export default function AddExpenseScreen() {
           placeholderTextColor="#A1A1AA"
           value={name}
           onChangeText={setName}
-          autoFocus
         />
 
         <Text style={styles.label}>How much did it cost?</Text>
@@ -277,22 +298,19 @@ export default function AddExpenseScreen() {
 
       <TouchableOpacity
         style={[
-          styles.addButton,
-          (!name || !amount) && styles.addButtonDisabled,
+          styles.saveButton,
+          (!name || !amount) && styles.saveButtonDisabled,
         ]}
-        onPress={handleAdd}
+        onPress={handleSave}
         disabled={loading || !name || !amount}
       >
-        <Text style={styles.addButtonText}>
-          {loading ? "Adding..." : "Add Expense"}
+        <Text style={styles.saveButtonText}>
+          {loading ? "Saving..." : "Save Changes"}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.cancelButton}
-        onPress={() => router.back()}
-      >
-        <Text style={styles.cancelButtonText}>Cancel</Text>
+      <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+        <Text style={styles.deleteButtonText}>Delete Expense</Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -420,6 +438,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  youLabel: {
+    color: "#A78BFA",
+    fontSize: 12,
+    fontWeight: "500",
+  },
   memberShare: {
     color: "#A1A1AA",
     fontSize: 12,
@@ -458,29 +481,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-  addButton: {
+  saveButton: {
     backgroundColor: "#A78BFA",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  addButtonDisabled: {
+  saveButtonDisabled: {
     opacity: 0.4,
   },
-  addButtonText: {
+  saveButtonText: {
     color: "#0A0A0A",
     fontSize: 16,
     fontWeight: "700",
   },
-  cancelButton: {
-    padding: 16,
+  deleteButton: {
+    borderRadius: 12,
+    padding: 14,
     alignItems: "center",
     marginBottom: 20,
+    borderWidth: 0.5,
+    borderColor: "#F87171",
   },
-  cancelButtonText: {
-    color: "#A1A1AA",
-    fontSize: 15,
+  deleteButtonText: {
+    color: "#F87171",
+    fontSize: 14,
+    fontWeight: "600",
   },
   error: {
     color: "#F87171",
@@ -491,10 +518,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 0.5,
     borderColor: "#F87171",
-  },
-  youLabel: {
-    color: "#A78BFA",
-    fontSize: 12,
-    fontWeight: "500",
   },
 });
