@@ -39,6 +39,10 @@ export default function LoginScreen() {
   };
 
   const handleSignUp = async () => {
+    if (!email || !password) {
+      setError("Please enter your email and password to create an account.");
+      return;
+    }
     setLoading(true);
     setError("");
     const { error } = await supabase.auth.signUp({ email, password });
