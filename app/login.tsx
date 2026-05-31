@@ -23,7 +23,18 @@ export default function LoginScreen() {
       email,
       password,
     });
-    if (error) setError(error.message);
+    if (error) {
+      if (
+        error.message.toLowerCase().includes("invalid") ||
+        error.message.toLowerCase().includes("credentials")
+      ) {
+        setError(
+          "No account found with those details. Please check your info or create an account.",
+        );
+      } else {
+        setError(error.message);
+      }
+    }
     setLoading(false);
   };
 
