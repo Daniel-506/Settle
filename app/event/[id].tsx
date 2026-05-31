@@ -554,6 +554,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  ownerBadge: {
+    backgroundColor: "#2A2A2A",
+    borderRadius: 6,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderWidth: 0.5,
+    borderColor: "#A78BFA",
+  },
+  ownerBadgeText: {
+    color: "#A78BFA",
+    fontSize: 10,
+    fontWeight: "600",
+  },
   removeButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -607,18 +620,5 @@ const styles = StyleSheet.create({
   searchResultUsername: {
     color: "#A78BFA",
     fontSize: 13,
-  },
-  ownerBadge: {
-    backgroundColor: "#2A2A2A",
-    borderRadius: 6,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderWidth: 0.5,
-    borderColor: "#A78BFA",
-  },
-  ownerBadgeText: {
-    color: "#A78BFA",
-    fontSize: 10,
-    fontWeight: "600",
   },
 });

@@ -67,7 +67,7 @@ export default function SetupProfileScreen() {
 
       <Text style={styles.title}>Set up your profile</Text>
       <Text style={styles.subtitle}>
-        This is how friends will find you on Split
+        This is how friends will find you on Settle
       </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}

@@ -17,6 +17,10 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
     setLoading(true);
     setError("");
     const { error } = await supabase.auth.signInWithPassword({
@@ -59,10 +63,10 @@ export default function LoginScreen() {
         <View style={styles.logoMark}>
           <Text style={styles.logoText}>S</Text>
         </View>
-        <Text style={styles.logoLabel}>Split</Text>
+        <Text style={styles.logoLabel}>Settle</Text>
       </View>
 
-      <Text style={styles.tagline}>Hangouts without the math</Text>
+      <Text style={styles.tagline}>Settle the bill simply.</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
