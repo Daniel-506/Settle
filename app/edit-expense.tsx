@@ -60,7 +60,10 @@ export default function EditExpenseScreen() {
 
     if (profiles) {
       setAllMembers(profiles);
-      const splitIds = expense.split_member_ids || profiles.map((p) => p.id);
+      const splitIds =
+        expense.split_member_ids && expense.split_member_ids.length > 0
+          ? expense.split_member_ids
+          : profiles.map((p) => p.id);
       setSelectedIds(splitIds);
 
       if (expense.custom_splits) {

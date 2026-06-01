@@ -1,8 +1,10 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +17,9 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState(null);
   const [paypal, setPaypal] = useState("");
   const [loading, setLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
     loadProfile();
@@ -46,8 +50,85 @@ export default function ProfileScreen() {
       .update({ paypal_username: paypal })
       .eq("id", user.id);
     setLoading(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaved("paypal");
+    setTimeout(() => setSaved(null), 2000);
+  }
+
+  function startEdit(field) {
+    setEditing(field);
+    setEditValue(
+      field === "display_name"
+        ? profile?.display_name || ""
+        : field === "username"
+          ? profile?.username || ""
+          : field === "email"
+            ? profile?.email || ""
+            : "",
+    );
+  }
+
+  async function saveEdit() {
+    if (!editValue.trim()) return;
+    setLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (editing === "display_name") {
+      await supabase
+        .from("profiles")
+        .update({ display_name: editValue.trim() })
+        .eq("id", user.id);
+    } else if (editing === "username") {
+      const clean = editValue.toLowerCase().replace(/[^a-z0-9_]/g, "");
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("username", clean)
+        .neq("id", user.id)
+        .single();
+      if (existing) {
+        Alert.alert("Username taken", "Please choose a different username.");
+        setLoading(false);
+        return;
+      }
+      await supabase
+        .from("profiles")
+        .update({ username: clean })
+        .eq("id", user.id);
+    } else if (editing === "email") {
+      const { error } = await supabase.auth.updateUser({
+        email: editValue.trim(),
+      });
+      if (error) {
+        Alert.alert("Error", error.message);
+        setLoading(false);
+        return;
+      }
+      await supabase
+        .from("profiles")
+        .update({ email: editValue.trim() })
+        .eq("id", user.id);
+    }
+
+    await loadProfile();
+    setEditing(null);
+    setEditValue("");
+    setLoading(false);
+    setSaved(editing);
+    setTimeout(() => setSaved(null), 2000);
+  }
+
+  async function handleChangePassword() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+    if (error) {
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } else {
+      Alert.alert("Email sent", `Password reset email sent to ${user.email}`);
+    }
   }
 
   async function handleLogout() {
@@ -64,6 +145,74 @@ export default function ProfileScreen() {
         .slice(0, 2)
     : "?";
 
+  const renderEditableField = (field, label, value, accentColor) => {
+    const isEditing = editing === field;
+    const isSaved = saved === field;
+    return (
+      <View
+        style={[
+          styles.card,
+          accentColor === "cyan" ? styles.cardCyan : styles.cardPink,
+        ]}
+      >
+        <View
+          style={[
+            styles.cardAccent,
+            accentColor === "cyan" ? styles.accentCyan : styles.accentPink,
+          ]}
+        />
+        <View style={styles.cardInner}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardLabel}>{label}</Text>
+            {!isEditing && (
+              <TouchableOpacity onPress={() => startEdit(field)}>
+                <Text style={styles.editButton}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {isEditing ? (
+            <>
+              <TextInput
+                style={styles.editInput}
+                value={editValue}
+                onChangeText={setEditValue}
+                autoFocus
+                autoCapitalize={field === "email" ? "none" : "words"}
+                keyboardType={field === "email" ? "email-address" : "default"}
+              />
+              <View style={styles.editActions}>
+                <TouchableOpacity
+                  style={styles.cancelEditButton}
+                  onPress={() => {
+                    setEditing(null);
+                    setEditValue("");
+                  }}
+                >
+                  <Text style={styles.cancelEditText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.saveEditButton}
+                  onPress={saveEdit}
+                  disabled={loading}
+                >
+                  <Text style={styles.saveEditText}>
+                    {loading ? "Saving..." : "Save"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.cardValue}>
+              {isSaved
+                ? "✓ Saved"
+                : (field === "username" ? `@${value}` : value) || "—"}
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -73,53 +222,69 @@ export default function ProfileScreen() {
         <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
 
-      <View style={styles.avatarSection}>
-        <View style={styles.avatarRing}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          </View>
+          <Text style={styles.displayName}>{profile?.display_name || "—"}</Text>
+          <View style={styles.usernameBadge}>
+            <Text style={styles.usernameText}>@{profile?.username || "—"}</Text>
           </View>
         </View>
-        <Text style={styles.displayName}>{profile?.display_name || "—"}</Text>
-        <View style={styles.usernameBadge}>
-          <Text style={styles.usernameText}>@{profile?.username || "—"}</Text>
-        </View>
-      </View>
 
-      <View style={styles.card}>
-        <View style={styles.cardAccent} />
-        <View style={styles.cardInner}>
-          <Text style={styles.cardLabel}>Email</Text>
-          <Text style={styles.cardValue}>{profile?.email || "—"}</Text>
-        </View>
-      </View>
+        {renderEditableField(
+          "display_name",
+          "Display Name",
+          profile?.display_name,
+          "cyan",
+        )}
+        {renderEditableField("username", "Username", profile?.username, "pink")}
+        {renderEditableField("email", "Email", profile?.email, "cyan")}
 
-      <View style={styles.card}>
-        <View style={styles.cardAccentPink} />
-        <View style={styles.cardInner}>
-          <Text style={styles.cardLabel}>PayPal username</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="your paypal username"
-            placeholderTextColor="#8B8B8B"
-            value={paypal}
-            onChangeText={setPaypal}
-            autoCapitalize="none"
-          />
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={savePayPal}
-            disabled={loading}
-          >
-            <Text style={styles.saveButtonText}>
-              {saved ? "Saved ✓" : loading ? "Saving..." : "Save"}
-            </Text>
-          </TouchableOpacity>
+        <View style={[styles.card, styles.cardPink]}>
+          <View style={[styles.cardAccent, styles.accentPink]} />
+          <View style={styles.cardInner}>
+            <Text style={styles.cardLabel}>PayPal Username</Text>
+            <TextInput
+              style={styles.editInput}
+              placeholder="your paypal username"
+              placeholderTextColor="#8B8B8B"
+              value={paypal}
+              onChangeText={setPaypal}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={styles.saveEditButton}
+              onPress={savePayPal}
+              disabled={loading}
+            >
+              <Text style={styles.saveEditText}>
+                {saved === "paypal"
+                  ? "Saved ✓"
+                  : loading
+                    ? "Saving..."
+                    : "Save"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutButtonText}>Log Out</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.changePasswordButton}
+          onPress={handleChangePassword}
+        >
+          <Text style={styles.changePasswordText}>Change Password</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>Log Out</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -171,41 +336,73 @@ const styles = StyleSheet.create({
   },
   usernameText: { color: "#00F5D4", fontSize: 13, fontWeight: "600" },
   card: {
-    backgroundColor: "#161616",
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 0.5,
-    borderColor: "#262626",
     flexDirection: "row",
     overflow: "hidden",
   },
-  cardAccent: { width: 3, backgroundColor: "#00F5D4" },
-  cardAccentPink: { width: 3, backgroundColor: "#F15BB5" },
+  cardCyan: { backgroundColor: "#161616", borderColor: "#00F5D4" },
+  cardPink: { backgroundColor: "#161616", borderColor: "#F15BB5" },
+  cardAccent: { width: 3 },
+  accentCyan: { backgroundColor: "#00F5D4" },
+  accentPink: { backgroundColor: "#F15BB5" },
   cardInner: { flex: 1, padding: 16 },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
   cardLabel: {
     color: "#8B8B8B",
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.8,
-    marginBottom: 6,
   },
+  editButton: { color: "#00F5D4", fontSize: 13, fontWeight: "600" },
   cardValue: { color: "#FFFFFF", fontSize: 15, fontWeight: "500" },
-  input: { color: "#FFFFFF", fontSize: 15, paddingVertical: 4 },
-  saveButton: {
-    backgroundColor: "#00F5D4",
-    borderRadius: 8,
-    padding: 10,
-    alignItems: "center",
-    marginTop: 12,
+  editInput: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#262626",
+    paddingVertical: 8,
+    marginBottom: 12,
   },
-  saveButtonText: { color: "#0A0A0A", fontSize: 14, fontWeight: "700" },
+  editActions: { flexDirection: "row", gap: 8 },
+  cancelEditButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 0.5,
+    borderColor: "#262626",
+    alignItems: "center",
+  },
+  cancelEditText: { color: "#8B8B8B", fontSize: 13, fontWeight: "600" },
+  saveEditButton: {
+    flex: 1,
+    backgroundColor: "#00F5D4",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  saveEditText: { color: "#0A0A0A", fontSize: 13, fontWeight: "700" },
+  changePasswordButton: {
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 0.5,
+    borderColor: "#00F5D4",
+    marginBottom: 12,
+  },
+  changePasswordText: { color: "#00F5D4", fontSize: 15, fontWeight: "600" },
   logoutButton: {
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#F15BB5",
-    marginTop: 8,
   },
   logoutButtonText: { color: "#F15BB5", fontSize: 16, fontWeight: "600" },
 });

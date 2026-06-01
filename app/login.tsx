@@ -54,6 +54,23 @@ export default function LoginScreen() {
     setLoading(false);
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError("Please enter your email.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) {
+      setError(error.message);
+    } else {
+      setError("");
+      alert(`Password reset email sent to ${email}`);
+    }
+    setLoading(false);
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -66,7 +83,7 @@ export default function LoginScreen() {
         <Text style={styles.logoLabel}>Settle</Text>
       </View>
 
-      <Text style={styles.tagline}>Hangouts without the math</Text>
+      <Text style={styles.tagline}>Settle the bill simply.</Text>
 
       <View style={styles.tagRow}>
         <View style={styles.tag}>
@@ -113,6 +130,12 @@ export default function LoginScreen() {
         <Text style={styles.loginButtonText}>
           {loading ? "Loading..." : "Log In"}
         </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.forgotButton}
+        onPress={handleForgotPassword}
+      >
+        <Text style={styles.forgotButtonText}>Forgot Password?</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -218,4 +241,6 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "#F15BB5",
   },
+  forgotButton: { alignItems: "center", paddingVertical: 10, marginBottom: 4 },
+  forgotButtonText: { color: "#8B8B8B", fontSize: 14 },
 });

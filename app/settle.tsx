@@ -76,6 +76,17 @@ export default function SettleScreen() {
     });
     loadAll();
   }
+  async function unmarkPaid(payment) {
+    console.log("unmark:", payment.from, payment.to, event_id);
+    const { error } = await supabase
+      .from("payments")
+      .delete()
+      .eq("event_id", event_id)
+      .eq("from_name", payment.from)
+      .eq("to_name", payment.to);
+    console.log("unmark error:", error);
+    loadAll();
+  }
 
   async function openPayPal(payment) {
     const recipient = members.find((m) => m.display_name === payment.to);
@@ -183,7 +194,14 @@ export default function SettleScreen() {
               </Text>
             </View>
           </View>
-          {paid && <Text style={styles.paidLabel}>✓ Settled</Text>}
+          {paid && (
+            <View style={styles.settledRow}>
+              <Text style={styles.paidLabel}>✓ Settled</Text>
+              <TouchableOpacity onPress={() => unmarkPaid(item)}>
+                <Text style={styles.unsettleText}>Undo</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
         <View style={styles.cardRight}>
           <Text
@@ -450,12 +468,7 @@ const styles = StyleSheet.create({
   },
   nameTagPlainText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
   arrow: { color: "#8B8B8B", fontSize: 14 },
-  paidLabel: {
-    color: "#00F5D4",
-    fontSize: 11,
-    fontWeight: "600",
-    marginTop: 6,
-  },
+  paidLabel: { color: "#00F5D4", fontSize: 11, fontWeight: "600" },
   buttonRow: { flexDirection: "row", gap: 6 },
   amount: { fontSize: 16, fontWeight: "700" },
   amountCyan: { color: "#00F5D4" },
@@ -484,6 +497,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 10,
+  },
+  settledRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  unsettleText: {
+    color: "#8B8B8B",
+    fontSize: 11,
+    textDecorationLine: "underline",
+    marginTop: 1,
   },
   payButtonText: { color: "#0A0A0A", fontSize: 11, fontWeight: "700" },
   emptyState: { alignItems: "center", paddingTop: 20 },
