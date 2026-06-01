@@ -111,17 +111,27 @@ export default function SettleScreen() {
   }
 
   const memberNames = members.map((m) => m.display_name || "Unknown");
-  const { total, fairShare, payments } =
+  const memberIdToName = {};
+  members.forEach((m) => {
+    memberIdToName[m.id] = m.display_name;
+  });
+
+  const { total, payments } =
     expenses.length > 0 && memberNames.length > 0
       ? calculateSplit(
           expenses.map((e) => ({
             ...e,
             paidBy: e.paid_by,
-            splitBetween: memberNames.length,
+            splitMembers: e.split_member_ids
+              ? e.split_member_ids
+                  .map((uid) => memberIdToName[uid])
+                  .filter(Boolean)
+              : memberNames,
+            customSplits: e.custom_splits || {},
           })),
           memberNames,
         )
-      : { total: 0, fairShare: 0, payments: [] };
+      : { total: 0, payments: [] };
 
   const iOwe = payments.filter((p) => p.from === currentUser);
   const owedToMe = payments.filter((p) => p.to === currentUser);
@@ -129,7 +139,6 @@ export default function SettleScreen() {
   const renderPaymentCard = (item) => {
     const paid = isPaid(item);
     const isMyDebt = item.from === currentUser;
-
     return (
       <View
         key={`${item.from}-${item.to}`}
@@ -231,8 +240,8 @@ export default function SettleScreen() {
           <Text style={styles.summaryAmount}>${total.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Each owes</Text>
-          <Text style={styles.summaryAmount}>${fairShare.toFixed(2)}</Text>
+          <Text style={styles.summaryLabel}>Payments</Text>
+          <Text style={styles.summaryAmount}>{payments.length}</Text>
         </View>
       </View>
 
@@ -308,179 +317,109 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
   },
-  backButton: {
-    marginBottom: 16,
-  },
-  backText: {
-    color: "#A78BFA",
-    fontSize: 15,
-    fontWeight: "500",
-  },
+  backButton: { marginBottom: 16 },
+  backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
   title: {
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     fontSize: 28,
     fontWeight: "700",
     marginBottom: 20,
   },
-  summaryRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
+  summaryRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
   summaryCard: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 16,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
   },
   summaryLabel: {
-    color: "#A1A1AA",
+    color: "#8B8B8B",
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 6,
   },
-  summaryAmount: {
-    color: "#A78BFA",
-    fontSize: 24,
-    fontWeight: "700",
-  },
+  summaryAmount: { color: "#00F5D4", fontSize: 24, fontWeight: "700" },
   tabs: {
     flexDirection: "row",
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 4,
     marginBottom: 16,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderRadius: 9,
-  },
-  activeTab: {
-    backgroundColor: "#A78BFA",
-  },
-  tabText: {
-    color: "#A1A1AA",
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  activeTabText: {
-    color: "#0A0A0A",
-    fontWeight: "700",
-  },
+  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 9 },
+  activeTab: { backgroundColor: "#00F5D4" },
+  tabText: { color: "#8B8B8B", fontSize: 13, fontWeight: "500" },
+  activeTabText: { color: "#0A0A0A", fontWeight: "700" },
   sectionHeader: {
-    color: "#A1A1AA",
+    color: "#8B8B8B",
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 10,
   },
   card: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 16,
     marginBottom: 10,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   cardPaid: {
-    backgroundColor: "#0A1A12",
-    borderColor: "#34D399",
+    backgroundColor: "#0A1F1A",
+    borderColor: "#00F5D4",
     opacity: 0.7,
   },
-  cardLeft: {
-    flex: 1,
-  },
-  cardRight: {
-    alignItems: "flex-end",
-    gap: 8,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  paymentText: {
-    fontSize: 15,
-  },
-  paymentTextPaid: {
-    textDecorationLine: "line-through",
-  },
-  fromName: {
-    fontWeight: "600",
-    color: "#F87171",
-  },
-  toName: {
-    fontWeight: "600",
-    color: "#34D399",
-  },
-  youText: {
-    fontWeight: "600",
-    color: "#A78BFA",
-  },
-  arrow: {
-    color: "#A1A1AA",
-  },
+  cardLeft: { flex: 1 },
+  cardRight: { alignItems: "flex-end", gap: 8 },
+  buttonRow: { flexDirection: "row", gap: 6 },
+  paymentText: { fontSize: 15 },
+  paymentTextPaid: { textDecorationLine: "line-through" },
+  fromName: { fontWeight: "600", color: "#F15BB5" },
+  toName: { fontWeight: "600", color: "#00F5D4" },
+  youText: { fontWeight: "600", color: "#9B5DE5" },
+  arrow: { color: "#8B8B8B" },
   paidLabel: {
-    color: "#34D399",
+    color: "#00F5D4",
     fontSize: 11,
     fontWeight: "600",
     marginTop: 4,
   },
-  amount: {
-    color: "#A78BFA",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  amountPaid: {
-    color: "#A1A1AA",
-    textDecorationLine: "line-through",
-  },
+  amount: { color: "#00F5D4", fontSize: 16, fontWeight: "600" },
+  amountPaid: { color: "#8B8B8B", textDecorationLine: "line-through" },
   copyButton: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#262626",
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderWidth: 0.5,
-    borderColor: "#3A3A3A",
+    borderColor: "#363636",
   },
-  copyButtonText: {
-    color: "#FAFAFA",
-    fontSize: 11,
-    fontWeight: "600",
-  },
+  copyButtonText: { color: "#FFFFFF", fontSize: 11, fontWeight: "600" },
   paypalButton: {
-    backgroundColor: "#0070BA",
+    backgroundColor: "#9B5DE5",
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 10,
   },
-  paypalButtonText: {
-    color: "#FAFAFA",
-    fontSize: 11,
-    fontWeight: "600",
-  },
+  paypalButtonText: { color: "#FFFFFF", fontSize: 11, fontWeight: "600" },
   payButton: {
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#00F5D4",
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 10,
   },
-  payButtonText: {
-    color: "#0A0A0A",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  payButtonText: { color: "#0A0A0A", fontSize: 11, fontWeight: "700" },
   empty: {
-    color: "#A1A1AA",
+    color: "#8B8B8B",
     fontSize: 14,
     textAlign: "center",
     marginTop: 20,

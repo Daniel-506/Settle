@@ -91,7 +91,7 @@ export default function ProfileScreen() {
         <TextInput
           style={styles.input}
           placeholder="your paypal username"
-          placeholderTextColor="#A1A1AA"
+          placeholderTextColor="#8B8B8B"
           value={paypal}
           onChangeText={setPaypal}
           autoCapitalize="none"
@@ -121,92 +121,60 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
   },
-  backButton: {
-    marginBottom: 24,
-  },
-  backText: {
-    color: "#A78BFA",
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  avatarSection: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
+  backButton: { marginBottom: 24 },
+  backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
+  avatarSection: { alignItems: "center", marginBottom: 32 },
   avatar: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#161616",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#A78BFA",
+    borderColor: "#00F5D4",
     marginBottom: 12,
   },
-  avatarText: {
-    color: "#A78BFA",
-    fontSize: 24,
-    fontWeight: "700",
-  },
+  avatarText: { color: "#00F5D4", fontSize: 24, fontWeight: "700" },
   displayName: {
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 4,
   },
-  username: {
-    color: "#A78BFA",
-    fontSize: 14,
-  },
+  username: { color: "#9B5DE5", fontSize: 14 },
   card: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
   },
   cardLabel: {
-    color: "#A1A1AA",
+    color: "#8B8B8B",
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 6,
   },
-  cardValue: {
-    color: "#FAFAFA",
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  input: {
-    color: "#FAFAFA",
-    fontSize: 15,
-    paddingVertical: 4,
-  },
+  cardValue: { color: "#FFFFFF", fontSize: 15, fontWeight: "500" },
+  input: { color: "#FFFFFF", fontSize: 15, paddingVertical: 4 },
   saveButton: {
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#00F5D4",
     borderRadius: 8,
     padding: 10,
     alignItems: "center",
     marginTop: 10,
   },
-  saveButtonText: {
-    color: "#0A0A0A",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  saveButtonText: { color: "#0A0A0A", fontSize: 14, fontWeight: "700" },
   logoutButton: {
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     marginTop: 8,
   },
-  logoutButtonText: {
-    color: "#F87171",
-    fontSize: 16,
-    fontWeight: "500",
-  },
+  logoutButtonText: { color: "#F15BB5", fontSize: 16, fontWeight: "500" },
 });

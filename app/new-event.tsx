@@ -92,6 +92,14 @@ export default function NewEventScreen() {
     setLoading(false);
   };
 
+  const getInitials = (name) =>
+    name
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "?";
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -115,7 +123,7 @@ export default function NewEventScreen() {
           <TextInput
             style={styles.input}
             placeholder="e.g. Sushi Night, BBQ, Road Trip"
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor="#8B8B8B"
             value={name}
             onChangeText={setName}
             autoFocus
@@ -159,7 +167,7 @@ export default function NewEventScreen() {
           <TextInput
             style={styles.input}
             placeholder="@username"
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor="#8B8B8B"
             value={memberSearch}
             onChangeText={handleSearch}
             autoCapitalize="none"
@@ -192,7 +200,7 @@ export default function NewEventScreen() {
                 <View key={member.id} style={styles.memberRow}>
                   <View style={styles.memberAvatar}>
                     <Text style={styles.memberAvatarText}>
-                      {member.display_name?.[0]?.toUpperCase() || "?"}
+                      {getInitials(member.display_name)}
                     </Text>
                   </View>
                   <Text style={styles.memberName}>{member.display_name}</Text>
@@ -235,139 +243,89 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
   },
-  backButton: {
-    marginBottom: 24,
-  },
-  backText: {
-    color: "#A78BFA",
-    fontSize: 15,
-    fontWeight: "500",
-  },
-  title: {
-    color: "#FAFAFA",
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#A1A1AA",
-    fontSize: 15,
-    marginBottom: 40,
-  },
+  backButton: { marginBottom: 24 },
+  backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
+  title: { color: "#FFFFFF", fontSize: 28, fontWeight: "700", marginBottom: 8 },
+  subtitle: { color: "#8B8B8B", fontSize: 15, marginBottom: 40 },
   label: {
-    color: "#A1A1AA",
+    color: "#8B8B8B",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     marginBottom: 16,
   },
   searchResults: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     marginBottom: 20,
     overflow: "hidden",
   },
   searchResult: {
     padding: 14,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: "#262626",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  searchResultName: {
-    color: "#FAFAFA",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  searchResultUsername: {
-    color: "#A78BFA",
-    fontSize: 13,
-  },
+  searchResultName: { color: "#FFFFFF", fontSize: 14, fontWeight: "500" },
+  searchResultUsername: { color: "#9B5DE5", fontSize: 13 },
   memberRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     gap: 12,
   },
   memberAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#262626",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 0.5,
-    borderColor: "#A78BFA",
+    borderColor: "#9B5DE5",
   },
-  memberAvatarText: {
-    color: "#A78BFA",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  memberName: {
-    color: "#FAFAFA",
-    fontSize: 14,
-    fontWeight: "500",
-    flex: 1,
-  },
-  removeButton: {
-    color: "#F87171",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  spacer: {
-    flex: 1,
-  },
+  memberAvatarText: { color: "#9B5DE5", fontSize: 13, fontWeight: "600" },
+  memberName: { color: "#FFFFFF", fontSize: 14, fontWeight: "500", flex: 1 },
+  removeButton: { color: "#F15BB5", fontSize: 14, fontWeight: "600" },
+  spacer: { flex: 1 },
   primaryButton: {
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#00F5D4",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginBottom: 12,
   },
-  primaryButtonDisabled: {
-    opacity: 0.4,
-  },
-  primaryButtonText: {
-    color: "#0A0A0A",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  cancelButton: {
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  cancelButtonText: {
-    color: "#A1A1AA",
-    fontSize: 15,
-  },
+  primaryButtonDisabled: { opacity: 0.4 },
+  primaryButtonText: { color: "#0A0A0A", fontSize: 16, fontWeight: "700" },
+  cancelButton: { padding: 16, alignItems: "center", marginBottom: 20 },
+  cancelButtonText: { color: "#8B8B8B", fontSize: 15 },
   error: {
-    color: "#F87171",
+    color: "#F15BB5",
     fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#1A0A0A",
+    backgroundColor: "#1A0A14",
     borderRadius: 8,
     borderWidth: 0.5,
-    borderColor: "#F87171",
+    borderColor: "#F15BB5",
   },
 });

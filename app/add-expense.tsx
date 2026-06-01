@@ -102,7 +102,6 @@ export default function AddExpenseScreen() {
       .eq("id", user.id)
       .single();
 
-    // Convert customSplits from {id: stringAmount} to {displayName: number}
     const customSplitsByName = {};
     Object.entries(customSplits).forEach(([id, amt]) => {
       const member = allMembers.find((m) => m.id === id);
@@ -110,14 +109,6 @@ export default function AddExpenseScreen() {
         customSplitsByName[member.display_name] = parseFloat(amt);
       }
     });
-
-    // Get display names of selected members
-    const splitMemberNames = selectedIds
-      .map((id) => {
-        const m = allMembers.find((mem) => mem.id === id);
-        return m?.display_name;
-      })
-      .filter(Boolean);
 
     const { error } = await supabase.from("expenses").insert({
       event_id,
@@ -150,10 +141,7 @@ export default function AddExpenseScreen() {
     (sum, v) => sum + (parseFloat(v) || 0),
     0,
   );
-  const remainingMembers = selectedIds.filter((id) => {
-    const m = allMembers.find((mem) => mem.id === id);
-    return m && !customSplits[id];
-  });
+  const remainingMembers = selectedIds.filter((id) => !customSplits[id]);
   const totalAmount = parseFloat(amount) || 0;
   const evenShare =
     remainingMembers.length > 0
@@ -178,7 +166,7 @@ export default function AddExpenseScreen() {
         <TextInput
           style={styles.input}
           placeholder="e.g. Drinks, Salmon, Pizza"
-          placeholderTextColor="#A1A1AA"
+          placeholderTextColor="#8B8B8B"
           value={name}
           onChangeText={setName}
           autoFocus
@@ -190,7 +178,7 @@ export default function AddExpenseScreen() {
           <TextInput
             style={styles.amountInput}
             placeholder="0.00"
-            placeholderTextColor="#A1A1AA"
+            placeholderTextColor="#8B8B8B"
             value={amount}
             onChangeText={(text) => setAmount(text.replace(/[^0-9.]/g, ""))}
             keyboardType="decimal-pad"
@@ -252,7 +240,7 @@ export default function AddExpenseScreen() {
                   <TextInput
                     style={styles.customInput}
                     placeholder="auto"
-                    placeholderTextColor="#A1A1AA"
+                    placeholderTextColor="#8B8B8B"
                     value={customSplits[member.id] || ""}
                     onChangeText={(text) => setCustomAmount(member.id, text)}
                     keyboardType="decimal-pad"
@@ -305,57 +293,47 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
   },
-  backButton: {
-    marginBottom: 20,
-  },
-  backText: {
-    color: "#A78BFA",
-    fontSize: 15,
-    fontWeight: "500",
-  },
+  backButton: { marginBottom: 20 },
+  backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
   title: {
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     fontSize: 28,
     fontWeight: "700",
     marginBottom: 24,
   },
   label: {
-    color: "#A1A1AA",
+    color: "#8B8B8B",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     marginBottom: 20,
   },
   amountRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     marginBottom: 20,
     paddingLeft: 16,
   },
-  dollarSign: {
-    color: "#A78BFA",
-    fontSize: 20,
-    fontWeight: "600",
-  },
+  dollarSign: { color: "#00F5D4", fontSize: 20, fontWeight: "600" },
   amountInput: {
     flex: 1,
     padding: 16,
     fontSize: 20,
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     fontWeight: "500",
   },
   splitHeader: {
@@ -364,17 +342,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  selectAllText: {
-    color: "#A78BFA",
-    fontSize: 13,
-    fontWeight: "600",
-  },
+  selectAllText: { color: "#9B5DE5", fontSize: 13, fontWeight: "600" },
   memberRow: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     marginBottom: 8,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
   },
   memberMain: {
     flexDirection: "row",
@@ -387,44 +361,26 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: "#A1A1AA",
+    borderColor: "#8B8B8B",
     alignItems: "center",
     justifyContent: "center",
   },
-  checkboxSelected: {
-    backgroundColor: "#A78BFA",
-    borderColor: "#A78BFA",
-  },
-  checkmark: {
-    color: "#0A0A0A",
-    fontSize: 13,
-    fontWeight: "900",
-  },
+  checkboxSelected: { backgroundColor: "#00F5D4", borderColor: "#00F5D4" },
+  checkmark: { color: "#0A0A0A", fontSize: 13, fontWeight: "900" },
   memberAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#262626",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 0.5,
-    borderColor: "#A78BFA",
+    borderColor: "#9B5DE5",
   },
-  memberAvatarText: {
-    color: "#A78BFA",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  memberName: {
-    color: "#FAFAFA",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  memberShare: {
-    color: "#A1A1AA",
-    fontSize: 12,
-    marginTop: 2,
-  },
+  memberAvatarText: { color: "#9B5DE5", fontSize: 12, fontWeight: "600" },
+  memberName: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
+  youLabel: { color: "#00F5D4", fontSize: 12, fontWeight: "500" },
+  memberShare: { color: "#8B8B8B", fontSize: 12, marginTop: 2 },
   customInputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -433,68 +389,38 @@ const styles = StyleSheet.create({
     paddingLeft: 80,
     gap: 4,
   },
-  dollarSignSmall: {
-    color: "#A78BFA",
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  dollarSignSmall: { color: "#00F5D4", fontSize: 14, fontWeight: "600" },
   customInput: {
     flex: 1,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#262626",
     borderRadius: 8,
     padding: 8,
     fontSize: 14,
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     borderWidth: 0.5,
-    borderColor: "#3A3A3A",
+    borderColor: "#363636",
   },
-  customToggle: {
-    padding: 12,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  customToggleText: {
-    color: "#A78BFA",
-    fontSize: 13,
-    fontWeight: "600",
-  },
+  customToggle: { padding: 12, alignItems: "center", marginTop: 4 },
+  customToggleText: { color: "#9B5DE5", fontSize: 13, fontWeight: "600" },
   addButton: {
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#00F5D4",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginBottom: 12,
   },
-  addButtonDisabled: {
-    opacity: 0.4,
-  },
-  addButtonText: {
-    color: "#0A0A0A",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  cancelButton: {
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  cancelButtonText: {
-    color: "#A1A1AA",
-    fontSize: 15,
-  },
+  addButtonDisabled: { opacity: 0.4 },
+  addButtonText: { color: "#0A0A0A", fontSize: 16, fontWeight: "700" },
+  cancelButton: { padding: 16, alignItems: "center", marginBottom: 20 },
+  cancelButtonText: { color: "#8B8B8B", fontSize: 15 },
   error: {
-    color: "#F87171",
+    color: "#F15BB5",
     fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#1A0A0A",
+    backgroundColor: "#1A0A14",
     borderRadius: 8,
     borderWidth: 0.5,
-    borderColor: "#F87171",
-  },
-  youLabel: {
-    color: "#A78BFA",
-    fontSize: 12,
-    fontWeight: "500",
+    borderColor: "#F15BB5",
   },
 });

@@ -76,7 +76,7 @@ export default function SetupProfileScreen() {
       <TextInput
         style={styles.input}
         placeholder="e.g. Danny"
-        placeholderTextColor="#A1A1AA"
+        placeholderTextColor="#8B8B8B"
         value={displayName}
         onChangeText={setDisplayName}
         autoFocus
@@ -88,7 +88,7 @@ export default function SetupProfileScreen() {
         <TextInput
           style={styles.usernameInput}
           placeholder="yourname"
-          placeholderTextColor="#A1A1AA"
+          placeholderTextColor="#8B8B8B"
           value={username}
           onChangeText={(text) => setUsername(text.replace(/[^a-z0-9_]/g, ""))}
           autoCapitalize="none"
@@ -123,102 +123,66 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 80,
   },
-  logoRow: {
-    marginBottom: 32,
-  },
+  logoRow: { marginBottom: 32 },
   logoMark: {
     width: 44,
     height: 44,
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#00F5D4",
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  logoText: {
-    color: "#0A0A0A",
-    fontSize: 28,
-    fontWeight: "900",
-  },
-  title: {
-    color: "#FAFAFA",
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#A1A1AA",
-    fontSize: 15,
-    marginBottom: 40,
-  },
+  logoText: { color: "#0A0A0A", fontSize: 28, fontWeight: "900" },
+  title: { color: "#FFFFFF", fontSize: 28, fontWeight: "700", marginBottom: 8 },
+  subtitle: { color: "#8B8B8B", fontSize: 15, marginBottom: 40 },
   label: {
-    color: "#A1A1AA",
+    color: "#8B8B8B",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     marginBottom: 24,
   },
   usernameRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     marginBottom: 8,
     paddingLeft: 16,
   },
-  at: {
-    color: "#A78BFA",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  usernameInput: {
-    flex: 1,
-    padding: 16,
-    fontSize: 16,
-    color: "#FAFAFA",
-  },
-  hint: {
-    color: "#A1A1AA",
-    fontSize: 12,
-    marginBottom: 32,
-  },
-  spacer: {
-    flex: 1,
-  },
+  at: { color: "#9B5DE5", fontSize: 16, fontWeight: "600" },
+  usernameInput: { flex: 1, padding: 16, fontSize: 16, color: "#FFFFFF" },
+  hint: { color: "#8B8B8B", fontSize: 12, marginBottom: 32 },
+  spacer: { flex: 1 },
   saveButton: {
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#00F5D4",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginBottom: 40,
   },
-  saveButtonDisabled: {
-    opacity: 0.4,
-  },
-  saveButtonText: {
-    color: "#0A0A0A",
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  saveButtonDisabled: { opacity: 0.4 },
+  saveButtonText: { color: "#0A0A0A", fontSize: 16, fontWeight: "700" },
   error: {
-    color: "#F87171",
+    color: "#F15BB5",
     fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#1A0A0A",
+    backgroundColor: "#1A0A14",
     borderRadius: 8,
     borderWidth: 0.5,
-    borderColor: "#F87171",
+    borderColor: "#F15BB5",
   },
 });

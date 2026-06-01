@@ -66,7 +66,7 @@ export default function LoginScreen() {
         <Text style={styles.logoLabel}>Settle</Text>
       </View>
 
-      <Text style={styles.tagline}>Settle the bill simply.</Text>
+      <Text style={styles.tagline}>Hangouts without the math</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -76,7 +76,7 @@ export default function LoginScreen() {
       <TextInput
         style={styles.input}
         placeholder="you@email.com"
-        placeholderTextColor="#A1A1AA"
+        placeholderTextColor="#8B8B8B"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -87,7 +87,7 @@ export default function LoginScreen() {
       <TextInput
         style={styles.input}
         placeholder="password"
-        placeholderTextColor="#A1A1AA"
+        placeholderTextColor="#8B8B8B"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -134,79 +134,57 @@ const styles = StyleSheet.create({
   logoMark: {
     width: 44,
     height: 44,
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#00F5D4",
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  logoText: {
-    color: "#0A0A0A",
-    fontSize: 28,
-    fontWeight: "900",
-  },
-  logoLabel: {
-    color: "#FAFAFA",
-    fontSize: 32,
-    fontWeight: "700",
-  },
-  tagline: {
-    color: "#A1A1AA",
-    fontSize: 16,
-    marginBottom: 40,
-  },
-  spacer: {
-    flex: 1,
-  },
+  logoText: { color: "#0A0A0A", fontSize: 28, fontWeight: "900" },
+  logoLabel: { color: "#FFFFFF", fontSize: 32, fontWeight: "700" },
+  tagline: { color: "#8B8B8B", fontSize: 16, marginBottom: 40 },
+  spacer: { flex: 1 },
   label: {
-    color: "#A1A1AA",
+    color: "#8B8B8B",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#161616",
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: "#FAFAFA",
+    color: "#FFFFFF",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#262626",
     marginBottom: 20,
   },
   loginButton: {
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#00F5D4",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     marginBottom: 12,
   },
-  loginButtonText: {
-    color: "#0A0A0A",
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  loginButtonText: { color: "#0A0A0A", fontSize: 16, fontWeight: "700" },
   signupButton: {
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     borderWidth: 0.5,
-    borderColor: "#2A2A2A",
+    borderColor: "#9B5DE5",
     marginBottom: 20,
   },
-  signupButtonText: {
-    color: "#A78BFA",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  signupButtonText: { color: "#9B5DE5", fontSize: 16, fontWeight: "600" },
   error: {
-    color: "#F87171",
+    color: "#F15BB5",
     fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#1A0A0A",
+    backgroundColor: "#1A0A14",
     borderRadius: 8,
     borderWidth: 0.5,
-    borderColor: "#F87171",
+    borderColor: "#F15BB5",
   },
 });
