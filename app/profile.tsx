@@ -74,37 +74,47 @@ export default function ProfileScreen() {
       </TouchableOpacity>
 
       <View style={styles.avatarSection}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
+        <View style={styles.avatarRing}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
         </View>
         <Text style={styles.displayName}>{profile?.display_name || "—"}</Text>
-        <Text style={styles.username}>@{profile?.username || "—"}</Text>
+        <View style={styles.usernameBadge}>
+          <Text style={styles.usernameText}>@{profile?.username || "—"}</Text>
+        </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Email</Text>
-        <Text style={styles.cardValue}>{profile?.email || "—"}</Text>
+        <View style={styles.cardAccent} />
+        <View style={styles.cardInner}>
+          <Text style={styles.cardLabel}>Email</Text>
+          <Text style={styles.cardValue}>{profile?.email || "—"}</Text>
+        </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>PayPal username</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="your paypal username"
-          placeholderTextColor="#8B8B8B"
-          value={paypal}
-          onChangeText={setPaypal}
-          autoCapitalize="none"
-        />
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={savePayPal}
-          disabled={loading}
-        >
-          <Text style={styles.saveButtonText}>
-            {saved ? "Saved ✓" : loading ? "Saving..." : "Save"}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.cardAccentPink} />
+        <View style={styles.cardInner}>
+          <Text style={styles.cardLabel}>PayPal username</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="your paypal username"
+            placeholderTextColor="#8B8B8B"
+            value={paypal}
+            onChangeText={setPaypal}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={savePayPal}
+            disabled={loading}
+          >
+            <Text style={styles.saveButtonText}>
+              {saved ? "Saved ✓" : loading ? "Saving..." : "Save"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -124,33 +134,54 @@ const styles = StyleSheet.create({
   backButton: { marginBottom: 24 },
   backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
   avatarSection: { alignItems: "center", marginBottom: 32 },
+  avatarRing: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 2,
+    borderColor: "#00F5D4",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
   avatar: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#161616",
+    backgroundColor: "#2A0A1A",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#00F5D4",
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#F15BB5",
   },
-  avatarText: { color: "#00F5D4", fontSize: 24, fontWeight: "700" },
+  avatarText: { color: "#F15BB5", fontSize: 24, fontWeight: "700" },
   displayName: {
     color: "#FFFFFF",
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  username: { color: "#9B5DE5", fontSize: 14 },
+  usernameBadge: {
+    backgroundColor: "#0A2A24",
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 14,
+    borderWidth: 0.5,
+    borderColor: "#00F5D4",
+  },
+  usernameText: { color: "#00F5D4", fontSize: 13, fontWeight: "600" },
   card: {
     backgroundColor: "#161616",
     borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
     borderWidth: 0.5,
     borderColor: "#262626",
+    flexDirection: "row",
+    overflow: "hidden",
   },
+  cardAccent: { width: 3, backgroundColor: "#00F5D4" },
+  cardAccentPink: { width: 3, backgroundColor: "#F15BB5" },
+  cardInner: { flex: 1, padding: 16 },
   cardLabel: {
     color: "#8B8B8B",
     fontSize: 11,
@@ -165,16 +196,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 12,
   },
   saveButtonText: { color: "#0A0A0A", fontSize: 14, fontWeight: "700" },
   logoutButton: {
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
-    borderWidth: 0.5,
-    borderColor: "#262626",
+    borderWidth: 1,
+    borderColor: "#F15BB5",
     marginTop: 8,
   },
-  logoutButtonText: { color: "#F15BB5", fontSize: 16, fontWeight: "500" },
+  logoutButtonText: { color: "#F15BB5", fontSize: 16, fontWeight: "600" },
 });

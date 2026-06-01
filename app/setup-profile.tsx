@@ -63,6 +63,7 @@ export default function SetupProfileScreen() {
         <View style={styles.logoMark}>
           <Text style={styles.logoText}>S</Text>
         </View>
+        <Text style={styles.logoLabel}>Settle</Text>
       </View>
 
       <Text style={styles.title}>Set up your profile</Text>
@@ -109,7 +110,7 @@ export default function SetupProfileScreen() {
         disabled={loading || !username || !displayName}
       >
         <Text style={styles.saveButtonText}>
-          {loading ? "Saving..." : "Continue"}
+          {loading ? "Saving..." : "Continue →"}
         </Text>
       </TouchableOpacity>
     </KeyboardAvoidingView>
@@ -123,7 +124,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 80,
   },
-  logoRow: { marginBottom: 32 },
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 32,
+  },
   logoMark: {
     width: 44,
     height: 44,
@@ -133,7 +139,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logoText: { color: "#0A0A0A", fontSize: 28, fontWeight: "900" },
-  title: { color: "#FFFFFF", fontSize: 28, fontWeight: "700", marginBottom: 8 },
+  logoLabel: { color: "#FFFFFF", fontSize: 28, fontWeight: "700" },
+  title: { color: "#FFFFFF", fontSize: 26, fontWeight: "700", marginBottom: 8 },
   subtitle: { color: "#8B8B8B", fontSize: 15, marginBottom: 40 },
   label: {
     color: "#8B8B8B",
@@ -157,12 +164,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#161616",
     borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: "#262626",
+    borderWidth: 1,
+    borderColor: "#F15BB5",
     marginBottom: 8,
     paddingLeft: 16,
   },
-  at: { color: "#9B5DE5", fontSize: 16, fontWeight: "600" },
+  at: { color: "#F15BB5", fontSize: 16, fontWeight: "600" },
   usernameInput: { flex: 1, padding: 16, fontSize: 16, color: "#FFFFFF" },
   hint: { color: "#8B8B8B", fontSize: 12, marginBottom: 32 },
   spacer: { flex: 1 },
@@ -180,7 +187,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#1A0A14",
+    backgroundColor: "#2A0A1A",
     borderRadius: 8,
     borderWidth: 0.5,
     borderColor: "#F15BB5",

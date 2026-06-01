@@ -74,18 +74,14 @@ export default function NewEventScreen() {
       return;
     }
 
-    await supabase.from("event_members").insert({
-      event_id: event.id,
-      user_id: user.id,
-      status: "active",
-    });
+    await supabase
+      .from("event_members")
+      .insert({ event_id: event.id, user_id: user.id, status: "active" });
 
     for (const member of members) {
-      await supabase.from("event_members").insert({
-        event_id: event.id,
-        user_id: member.id,
-        status: "active",
-      });
+      await supabase
+        .from("event_members")
+        .insert({ event_id: event.id, user_id: member.id, status: "active" });
     }
 
     router.replace("/");
@@ -113,6 +109,16 @@ export default function NewEventScreen() {
           >
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
+
+          <View style={styles.stepRow}>
+            <View style={styles.stepActive}>
+              <Text style={styles.stepActiveText}>1</Text>
+            </View>
+            <View style={styles.stepLine} />
+            <View style={styles.stepInactive}>
+              <Text style={styles.stepInactiveText}>2</Text>
+            </View>
+          </View>
 
           <Text style={styles.title}>New Event</Text>
           <Text style={styles.subtitle}>What are you splitting today?</Text>
@@ -159,6 +165,16 @@ export default function NewEventScreen() {
           >
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
+
+          <View style={styles.stepRow}>
+            <View style={styles.stepDone}>
+              <Text style={styles.stepDoneText}>✓</Text>
+            </View>
+            <View style={styles.stepLineDone} />
+            <View style={styles.stepActive}>
+              <Text style={styles.stepActiveText}>2</Text>
+            </View>
+          </View>
 
           <Text style={styles.title}>Add Members</Text>
           <Text style={styles.subtitle}>Who's splitting with you?</Text>
@@ -220,7 +236,7 @@ export default function NewEventScreen() {
             disabled={loading}
           >
             <Text style={styles.primaryButtonText}>
-              {loading ? "Creating..." : "Create Event"}
+              {loading ? "Creating..." : "Create Event ⚡"}
             </Text>
           </TouchableOpacity>
 
@@ -245,8 +261,47 @@ const styles = StyleSheet.create({
   },
   backButton: { marginBottom: 24 },
   backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 32,
+    gap: 8,
+  },
+  stepActive: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#00F5D4",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepActiveText: { color: "#0A0A0A", fontSize: 13, fontWeight: "800" },
+  stepInactive: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#161616",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#262626",
+  },
+  stepInactiveText: { color: "#8B8B8B", fontSize: 13, fontWeight: "600" },
+  stepDone: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#0A2A24",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#00F5D4",
+  },
+  stepDoneText: { color: "#00F5D4", fontSize: 13, fontWeight: "800" },
+  stepLine: { flex: 1, height: 1, backgroundColor: "#262626" },
+  stepLineDone: { flex: 1, height: 1, backgroundColor: "#00F5D4" },
   title: { color: "#FFFFFF", fontSize: 28, fontWeight: "700", marginBottom: 8 },
-  subtitle: { color: "#8B8B8B", fontSize: 15, marginBottom: 40 },
+  subtitle: { color: "#8B8B8B", fontSize: 15, marginBottom: 32 },
   label: {
     color: "#8B8B8B",
     fontSize: 12,
@@ -281,7 +336,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   searchResultName: { color: "#FFFFFF", fontSize: 14, fontWeight: "500" },
-  searchResultUsername: { color: "#9B5DE5", fontSize: 13 },
+  searchResultUsername: { color: "#F15BB5", fontSize: 13 },
   memberRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -297,13 +352,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#262626",
+    backgroundColor: "#2A0A1A",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 0.5,
-    borderColor: "#9B5DE5",
+    borderWidth: 1,
+    borderColor: "#F15BB5",
   },
-  memberAvatarText: { color: "#9B5DE5", fontSize: 13, fontWeight: "600" },
+  memberAvatarText: { color: "#F15BB5", fontSize: 13, fontWeight: "600" },
   memberName: { color: "#FFFFFF", fontSize: 14, fontWeight: "500", flex: 1 },
   removeButton: { color: "#F15BB5", fontSize: 14, fontWeight: "600" },
   spacer: { flex: 1 },
@@ -323,7 +378,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#1A0A14",
+    backgroundColor: "#2A0A1A",
     borderRadius: 8,
     borderWidth: 0.5,
     borderColor: "#F15BB5",

@@ -37,8 +37,7 @@ export default function SettleScreen() {
       .select("display_name")
       .eq("id", user.id)
       .single();
-    const displayName = profile?.display_name || user.email;
-    setCurrentUser(displayName);
+    setCurrentUser(profile?.display_name || user.email);
 
     const { data: expenseData } = await supabase
       .from("expenses")
@@ -50,7 +49,6 @@ export default function SettleScreen() {
       .from("event_members")
       .select("user_id")
       .eq("event_id", event_id);
-
     if (memberRows && memberRows.length > 0) {
       const userIds = memberRows.map((m) => m.user_id);
       const { data: profiles } = await supabase
@@ -144,20 +142,57 @@ export default function SettleScreen() {
         key={`${item.from}-${item.to}`}
         style={[styles.card, paid && styles.cardPaid]}
       >
+        <View
+          style={[
+            styles.cardAccent,
+            isMyDebt ? styles.cardAccentPink : styles.cardAccentCyan,
+            paid && styles.cardAccentPaid,
+          ]}
+        />
         <View style={styles.cardLeft}>
-          <Text style={[styles.paymentText, paid && styles.paymentTextPaid]}>
-            <Text style={isMyDebt ? styles.youText : styles.fromName}>
-              {isMyDebt ? "You" : item.from}
-            </Text>
-            <Text style={styles.arrow}> → </Text>
-            <Text style={!isMyDebt ? styles.youText : styles.toName}>
-              {!isMyDebt ? "You" : item.to}
-            </Text>
-          </Text>
+          <View style={styles.paymentRow}>
+            <View
+              style={[
+                styles.nameTag,
+                isMyDebt ? styles.nameTagPink : styles.nameTagCyan,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.nameTagText,
+                  isMyDebt ? styles.nameTagTextPink : styles.nameTagTextCyan,
+                ]}
+              >
+                {isMyDebt ? "You" : item.from}
+              </Text>
+            </View>
+            <Text style={styles.arrow}>→</Text>
+            <View
+              style={[
+                styles.nameTag,
+                !isMyDebt ? styles.nameTagPink : styles.nameTagCyan,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.nameTagText,
+                  !isMyDebt ? styles.nameTagTextPink : styles.nameTagTextCyan,
+                ]}
+              >
+                {!isMyDebt ? "You" : item.to}
+              </Text>
+            </View>
+          </View>
           {paid && <Text style={styles.paidLabel}>✓ Settled</Text>}
         </View>
         <View style={styles.cardRight}>
-          <Text style={[styles.amount, paid && styles.amountPaid]}>
+          <Text
+            style={[
+              styles.amount,
+              paid && styles.amountPaid,
+              isMyDebt ? styles.amountPink : styles.amountCyan,
+            ]}
+          >
             ${item.amount.toFixed(2)}
           </Text>
           {!paid && isMyDebt && (
@@ -191,14 +226,26 @@ export default function SettleScreen() {
 
   const renderAllPayment = ({ item }) => {
     const paid = isPaid(item);
+    const isMyDebt = item.from === currentUser;
     return (
       <View style={[styles.card, paid && styles.cardPaid]}>
+        <View
+          style={[
+            styles.cardAccent,
+            isMyDebt ? styles.cardAccentPink : styles.cardAccentCyan,
+            paid && styles.cardAccentPaid,
+          ]}
+        />
         <View style={styles.cardLeft}>
-          <Text style={[styles.paymentText, paid && styles.paymentTextPaid]}>
-            <Text style={styles.fromName}>{item.from}</Text>
-            <Text style={styles.arrow}> → </Text>
-            <Text style={styles.toName}>{item.to}</Text>
-          </Text>
+          <View style={styles.paymentRow}>
+            <View style={styles.nameTagPlain}>
+              <Text style={styles.nameTagPlainText}>{item.from}</Text>
+            </View>
+            <Text style={styles.arrow}>→</Text>
+            <View style={styles.nameTagPlain}>
+              <Text style={styles.nameTagPlainText}>{item.to}</Text>
+            </View>
+          </View>
           {paid && <Text style={styles.paidLabel}>✓ Settled</Text>}
         </View>
         <View style={styles.cardRight}>
@@ -235,13 +282,15 @@ export default function SettleScreen() {
       <Text style={styles.title}>Settle Up</Text>
 
       <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, styles.summaryCardCyan]}>
           <Text style={styles.summaryLabel}>Total</Text>
           <Text style={styles.summaryAmount}>${total.toFixed(2)}</Text>
         </View>
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, styles.summaryCardPink]}>
           <Text style={styles.summaryLabel}>Payments</Text>
-          <Text style={styles.summaryAmount}>{payments.length}</Text>
+          <Text style={[styles.summaryAmount, styles.summaryAmountPink]}>
+            {payments.length}
+          </Text>
         </View>
       </View>
 
@@ -278,7 +327,10 @@ export default function SettleScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionHeader}>You owe</Text>
           {iOwe.length === 0 ? (
-            <Text style={styles.empty}>You're all settled up! 🎉</Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🎉</Text>
+              <Text style={styles.empty}>You're all settled up!</Text>
+            </View>
           ) : (
             iOwe.map((item) => renderPaymentCard(item))
           )}
@@ -298,11 +350,14 @@ export default function SettleScreen() {
           keyExtractor={(item, index) => index.toString()}
           renderItem={renderAllPayment}
           ListEmptyComponent={
-            <Text style={styles.empty}>
-              {expenses.length === 0
-                ? "No expenses yet"
-                : "Everyone is settled up! 🎉"}
-            </Text>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🎉</Text>
+              <Text style={styles.empty}>
+                {expenses.length === 0
+                  ? "No expenses yet"
+                  : "Everyone is settled up!"}
+              </Text>
+            </View>
           }
         />
       )}
@@ -326,14 +381,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   summaryRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 0.5,
-    borderColor: "#262626",
-  },
+  summaryCard: { flex: 1, borderRadius: 12, padding: 16, borderWidth: 1 },
+  summaryCardCyan: { backgroundColor: "#0A2A24", borderColor: "#00F5D4" },
+  summaryCardPink: { backgroundColor: "#2A0A1A", borderColor: "#F15BB5" },
   summaryLabel: {
     color: "#8B8B8B",
     fontSize: 11,
@@ -342,6 +392,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   summaryAmount: { color: "#00F5D4", fontSize: 24, fontWeight: "700" },
+  summaryAmountPink: { color: "#F15BB5" },
   tabs: {
     flexDirection: "row",
     backgroundColor: "#161616",
@@ -365,35 +416,50 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#161616",
     borderRadius: 12,
-    padding: 16,
     marginBottom: 10,
     borderWidth: 0.5,
     borderColor: "#262626",
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    overflow: "hidden",
   },
-  cardPaid: {
-    backgroundColor: "#0A1F1A",
-    borderColor: "#00F5D4",
-    opacity: 0.7,
+  cardPaid: { opacity: 0.5 },
+  cardAccent: { width: 3, alignSelf: "stretch" },
+  cardAccentCyan: { backgroundColor: "#00F5D4" },
+  cardAccentPink: { backgroundColor: "#F15BB5" },
+  cardAccentPaid: { backgroundColor: "#8B8B8B" },
+  cardLeft: { flex: 1, padding: 14 },
+  cardRight: { alignItems: "flex-end", paddingRight: 14, gap: 8 },
+  paymentRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  nameTag: {
+    borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderWidth: 0.5,
   },
-  cardLeft: { flex: 1 },
-  cardRight: { alignItems: "flex-end", gap: 8 },
-  buttonRow: { flexDirection: "row", gap: 6 },
-  paymentText: { fontSize: 15 },
-  paymentTextPaid: { textDecorationLine: "line-through" },
-  fromName: { fontWeight: "600", color: "#F15BB5" },
-  toName: { fontWeight: "600", color: "#00F5D4" },
-  youText: { fontWeight: "600", color: "#9B5DE5" },
-  arrow: { color: "#8B8B8B" },
+  nameTagCyan: { backgroundColor: "#0A2A24", borderColor: "#00F5D4" },
+  nameTagPink: { backgroundColor: "#2A0A1A", borderColor: "#F15BB5" },
+  nameTagText: { fontSize: 13, fontWeight: "600" },
+  nameTagTextCyan: { color: "#00F5D4" },
+  nameTagTextPink: { color: "#F15BB5" },
+  nameTagPlain: {
+    backgroundColor: "#262626",
+    borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+  },
+  nameTagPlainText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
+  arrow: { color: "#8B8B8B", fontSize: 14 },
   paidLabel: {
     color: "#00F5D4",
     fontSize: 11,
     fontWeight: "600",
-    marginTop: 4,
+    marginTop: 6,
   },
-  amount: { color: "#00F5D4", fontSize: 16, fontWeight: "600" },
+  buttonRow: { flexDirection: "row", gap: 6 },
+  amount: { fontSize: 16, fontWeight: "700" },
+  amountCyan: { color: "#00F5D4" },
+  amountPink: { color: "#F15BB5" },
   amountPaid: { color: "#8B8B8B", textDecorationLine: "line-through" },
   copyButton: {
     backgroundColor: "#262626",
@@ -405,12 +471,14 @@ const styles = StyleSheet.create({
   },
   copyButtonText: { color: "#FFFFFF", fontSize: 11, fontWeight: "600" },
   paypalButton: {
-    backgroundColor: "#9B5DE5",
+    backgroundColor: "#2A0A1A",
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 10,
+    borderWidth: 0.5,
+    borderColor: "#F15BB5",
   },
-  paypalButtonText: { color: "#FFFFFF", fontSize: 11, fontWeight: "600" },
+  paypalButtonText: { color: "#F15BB5", fontSize: 11, fontWeight: "600" },
   payButton: {
     backgroundColor: "#00F5D4",
     borderRadius: 8,
@@ -418,11 +486,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   payButtonText: { color: "#0A0A0A", fontSize: 11, fontWeight: "700" },
-  empty: {
-    color: "#8B8B8B",
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 20,
-    marginBottom: 20,
-  },
+  emptyState: { alignItems: "center", paddingTop: 20 },
+  emptyIcon: { fontSize: 28, marginBottom: 8 },
+  empty: { color: "#8B8B8B", fontSize: 14, textAlign: "center" },
 });

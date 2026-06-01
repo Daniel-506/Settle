@@ -68,6 +68,18 @@ export default function LoginScreen() {
 
       <Text style={styles.tagline}>Hangouts without the math</Text>
 
+      <View style={styles.tagRow}>
+        <View style={styles.tag}>
+          <Text style={styles.tagText}>⚡ Split bills</Text>
+        </View>
+        <View style={styles.tagPink}>
+          <Text style={styles.tagTextPink}>💸 Track debts</Text>
+        </View>
+        <View style={styles.tag}>
+          <Text style={styles.tagText}>✓ Settle up</Text>
+        </View>
+      </View>
+
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.spacer} />
@@ -141,7 +153,26 @@ const styles = StyleSheet.create({
   },
   logoText: { color: "#0A0A0A", fontSize: 28, fontWeight: "900" },
   logoLabel: { color: "#FFFFFF", fontSize: 32, fontWeight: "700" },
-  tagline: { color: "#8B8B8B", fontSize: 16, marginBottom: 40 },
+  tagline: { color: "#8B8B8B", fontSize: 16, marginBottom: 20 },
+  tagRow: { flexDirection: "row", gap: 8, marginBottom: 32, flexWrap: "wrap" },
+  tag: {
+    backgroundColor: "#0A2A24",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 0.5,
+    borderColor: "#00F5D4",
+  },
+  tagText: { color: "#00F5D4", fontSize: 12, fontWeight: "600" },
+  tagPink: {
+    backgroundColor: "#2A0A1A",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 0.5,
+    borderColor: "#F15BB5",
+  },
+  tagTextPink: { color: "#F15BB5", fontSize: 12, fontWeight: "600" },
   spacer: { flex: 1 },
   label: {
     color: "#8B8B8B",
@@ -172,17 +203,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
-    borderWidth: 0.5,
-    borderColor: "#9B5DE5",
+    borderWidth: 1,
+    borderColor: "#F15BB5",
     marginBottom: 20,
   },
-  signupButtonText: { color: "#9B5DE5", fontSize: 16, fontWeight: "600" },
+  signupButtonText: { color: "#F15BB5", fontSize: 16, fontWeight: "600" },
   error: {
     color: "#F15BB5",
     fontSize: 13,
     marginBottom: 16,
     padding: 12,
-    backgroundColor: "#1A0A14",
+    backgroundColor: "#2A0A1A",
     borderRadius: 8,
     borderWidth: 0.5,
     borderColor: "#F15BB5",
