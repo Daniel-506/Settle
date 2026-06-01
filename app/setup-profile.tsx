@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import HexLogo from "../components/HexLogo";
 import { supabase } from "../lib/supabase";
 
 export default function SetupProfileScreen() {
@@ -60,9 +61,7 @@ export default function SetupProfileScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.logoRow}>
-        <View style={styles.logoMark}>
-          <Text style={styles.logoText}>S</Text>
-        </View>
+        <HexLogo size={44} />
         <Text style={styles.logoLabel}>Settle</Text>
       </View>
 

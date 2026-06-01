@@ -1,7 +1,9 @@
+import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -20,6 +22,8 @@ export default function ProfileScreen() {
   const [saved, setSaved] = useState(null);
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -37,7 +41,69 @@ export default function ProfileScreen() {
     if (data) {
       setProfile(data);
       setPaypal(data.paypal_username || "");
+      if (data.avatar_url) setAvatarUrl(data.avatar_url);
     }
+  }
+
+  async function pickImage() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission needed",
+        "Please allow access to your photo library.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      uploadAvatar(result.assets[0].uri);
+    }
+  }
+
+  async function uploadAvatar(uri) {
+    setUploadingAvatar(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    const arrayBuffer = await new Response(blob).arrayBuffer();
+
+    const fileName = `${user.id}/avatar.jpg`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(fileName, arrayBuffer, {
+        contentType: "image/jpeg",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      Alert.alert("Upload failed", uploadError.message);
+      setUploadingAvatar(false);
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("avatars").getPublicUrl(fileName);
+
+    const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+
+    await supabase
+      .from("profiles")
+      .update({ avatar_url: urlWithCacheBust })
+      .eq("id", user.id);
+    setAvatarUrl(urlWithCacheBust);
+    setUploadingAvatar(false);
   }
 
   async function savePayPal() {
@@ -224,11 +290,22 @@ export default function ProfileScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.avatarSection}>
-          <View style={styles.avatarRing}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
+          <TouchableOpacity onPress={pickImage} style={styles.avatarWrapper}>
+            <View style={styles.avatarRing}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initials}</Text>
+                </View>
+              )}
             </View>
-          </View>
+            <View style={styles.avatarEditBadge}>
+              <Text style={styles.avatarEditText}>
+                {uploadingAvatar ? "..." : "✎"}
+              </Text>
+            </View>
+          </TouchableOpacity>
           <Text style={styles.displayName}>{profile?.display_name || "—"}</Text>
           <View style={styles.usernameBadge}>
             <Text style={styles.usernameText}>@{profile?.username || "—"}</Text>
@@ -242,7 +319,12 @@ export default function ProfileScreen() {
           "cyan",
         )}
         {renderEditableField("username", "Username", profile?.username, "pink")}
-        {renderEditableField("email", "Email", profile?.email, "cyan")}
+        {renderEditableField(
+          "email",
+          "Email · used for e-Transfer payments",
+          profile?.email,
+          "cyan",
+        )}
 
         <View style={[styles.card, styles.cardPink]}>
           <View style={[styles.cardAccent, styles.accentPink]} />
@@ -299,6 +381,7 @@ const styles = StyleSheet.create({
   backButton: { marginBottom: 24 },
   backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
   avatarSection: { alignItems: "center", marginBottom: 32 },
+  avatarWrapper: { position: "relative", marginBottom: 12 },
   avatarRing: {
     width: 84,
     height: 84,
@@ -307,8 +390,8 @@ const styles = StyleSheet.create({
     borderColor: "#00F5D4",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
   },
+  avatarImage: { width: 76, height: 76, borderRadius: 38 },
   avatar: {
     width: 72,
     height: 72,
@@ -320,6 +403,18 @@ const styles = StyleSheet.create({
     borderColor: "#F15BB5",
   },
   avatarText: { color: "#F15BB5", fontSize: 24, fontWeight: "700" },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#00F5D4",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarEditText: { color: "#0A0A0A", fontSize: 12, fontWeight: "700" },
   displayName: {
     color: "#FFFFFF",
     fontSize: 22,

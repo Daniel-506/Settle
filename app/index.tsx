@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import HexLogo from "../components/HexLogo";
 import { supabase } from "../lib/supabase";
 
 export default function HomeScreen() {
@@ -238,9 +239,7 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.logoRow}>
-          <View style={styles.logoMark}>
-            <Text style={styles.logoText}>S</Text>
-          </View>
+          <HexLogo size={36} />
           <Text style={styles.logoLabel}>Settle</Text>
         </View>
         <TouchableOpacity
