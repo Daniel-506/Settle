@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.danielbuilds.settle",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Settle needs access to your photos to set a profile picture.",
-        "NSCameraUsageDescription": "Settle needs access to your camera to take a profile picture."
+        "NSCameraUsageDescription": "Settle needs access to your camera to take a profile picture.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -23,7 +24,11 @@
         "backgroundColor": "#0A0A0A"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"]
+      "permissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
