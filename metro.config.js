@@ -2,20 +2,22 @@ const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
 
-const nodeModules = {
-  stream: require.resolve("readable-stream"),
-  zlib: require.resolve("browserify-zlib"),
-  path: require.resolve("path-browserify"),
-  crypto: require.resolve("react-native-crypto"),
-  http: require.resolve("stream-http"),
-  https: require.resolve("https-browserify"),
-  os: require.resolve("react-native-os"),
-};
-
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (nodeModules[moduleName]) {
+  if (moduleName === "stream") {
+    return { filePath: require.resolve("readable-stream"), type: "sourceFile" };
+  }
+  if (moduleName === "zlib") {
+    return { filePath: require.resolve("browserify-zlib"), type: "sourceFile" };
+  }
+  if (moduleName === "path") {
+    return { filePath: require.resolve("path-browserify"), type: "sourceFile" };
+  }
+  if (moduleName === "http") {
+    return { filePath: require.resolve("stream-http"), type: "sourceFile" };
+  }
+  if (moduleName === "https") {
     return {
-      filePath: nodeModules[moduleName],
+      filePath: require.resolve("https-browserify"),
       type: "sourceFile",
     };
   }
