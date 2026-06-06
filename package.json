@@ -19,6 +19,7 @@
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "@supabase/supabase-js": "^2.39.3",
+    "browserify-zlib": "^0.2.0",
     "expo": "~54.0.33",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
@@ -33,6 +34,8 @@
     "expo-symbols": "~1.0.8",
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
+    "https-browserify": "^1.0.0",
+    "path-browserify": "^1.0.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -45,6 +48,7 @@
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
     "readable-stream": "^4.7.0",
+    "stream-http": "^3.2.0",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
