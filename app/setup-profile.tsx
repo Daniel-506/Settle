@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -9,7 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import HexLogo from "../components/HexLogo";
 import { supabase } from "../lib/supabase";
 
 export default function SetupProfileScreen() {
@@ -61,7 +61,10 @@ export default function SetupProfileScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View style={styles.logoRow}>
-        <HexLogo size={44} />
+        <Image
+          source={require("../assets/images/icon.png")}
+          style={{ width: 44, height: 44, borderRadius: 10 }}
+        />
         <Text style={styles.logoLabel}>Settle</Text>
       </View>
 
@@ -191,4 +194,5 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "#F15BB5",
   },
+  logoImage: { width: 36, height: 36, borderRadius: 8 },
 });

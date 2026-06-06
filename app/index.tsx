@@ -4,6 +4,7 @@ import {
   ActionSheetIOS,
   Alert,
   FlatList,
+  Image,
   Platform,
   RefreshControl,
   StyleSheet,
@@ -11,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import HexLogo from "../components/HexLogo";
 import { supabase } from "../lib/supabase";
 
 export default function HomeScreen() {
@@ -239,7 +239,10 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.logoRow}>
-          <HexLogo size={36} />
+          <Image
+            source={require("../assets/images/icon.png")}
+            style={styles.logoImage}
+          />
           <Text style={styles.logoLabel}>Settle</Text>
         </View>
         <TouchableOpacity
@@ -454,5 +457,6 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: "center",
   },
+  logoImage: { width: 36, height: 36, borderRadius: 8 },
   newButtonText: { color: "#0A0A0A", fontSize: 16, fontWeight: "700" },
 });

@@ -19,8 +19,8 @@
     "android": {
       "package": "com.danielbuilds.settle",
       "adaptiveIcon": {
-        "backgroundColor": "#0A0A0A",
-        "foregroundImage": "./assets/images/adaptive-icon.png"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0A0A0A"
       },
       "edgeToEdgeEnabled": true,
       "permissions": ["READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"]
