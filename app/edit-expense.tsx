@@ -117,14 +117,16 @@ export default function EditExpenseScreen() {
     setLoading(true);
     setError("");
 
+    console.log("saving expense id:", id, "name:", name);
+
     const customSplitsByName = {};
-    Object.entries(customSplits).forEach(([id, amt]) => {
-      const member = allMembers.find((m) => m.id === id);
+    Object.entries(customSplits).forEach(([memberId, amt]) => {
+      const member = allMembers.find((m) => m.id === memberId);
       if (member && amt)
         customSplitsByName[member.display_name] = parseFloat(amt);
     });
 
-    const { error } = await supabase
+    const { error: saveError } = await supabase
       .from("expenses")
       .update({
         name,
@@ -135,7 +137,9 @@ export default function EditExpenseScreen() {
       })
       .eq("id", id);
 
-    if (error) setError(error.message);
+    console.log("save error:", saveError);
+
+    if (saveError) setError(saveError.message);
     else router.back();
     setLoading(false);
   };

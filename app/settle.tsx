@@ -64,6 +64,11 @@ export default function SettleScreen() {
       .eq("event_id", event_id)
       .eq("status", "paid");
     if (settled) setSettledPayments(settled);
+    console.log("memberIdToName:", memberIdToName);
+    console.log(
+      "first expense split_member_ids:",
+      expenses[0]?.split_member_ids,
+    );
   }
 
   async function markAsPaid(payment) {
@@ -124,7 +129,17 @@ export default function SettleScreen() {
   members.forEach((m) => {
     memberIdToName[m.id] = m.display_name;
   });
-
+  console.log(
+    "calling calc with expenses:",
+    expenses.map((e) => ({
+      name: e.name,
+      amount: e.amount,
+      paidBy: e.paid_by,
+      splitMembers: e.split_member_ids
+        ?.map((uid) => memberIdToName[uid])
+        .filter(Boolean),
+    })),
+  );
   const { total, payments } =
     expenses.length > 0 && memberNames.length > 0
       ? calculateSplit(
@@ -144,6 +159,10 @@ export default function SettleScreen() {
 
   const iOwe = payments.filter((p) => p.from === currentUser);
   const owedToMe = payments.filter((p) => p.to === currentUser);
+
+  console.log("expenses loaded:", expenses.length);
+  console.log("members loaded:", memberNames);
+  console.log("payments calc:", payments);
 
   const renderPaymentCard = (item) => {
     const paid = isPaid(item);

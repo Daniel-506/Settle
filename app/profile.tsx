@@ -54,14 +54,12 @@ export default function ProfileScreen() {
       );
       return;
     }
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
     });
-
     if (!result.canceled) {
       uploadAvatar(result.assets[0].uri);
     }
@@ -72,32 +70,25 @@ export default function ProfileScreen() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
     const response = await fetch(uri);
     const blob = await response.blob();
     const arrayBuffer = await new Response(blob).arrayBuffer();
-
     const fileName = `${user.id}/avatar.jpg`;
-
     const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(fileName, arrayBuffer, {
         contentType: "image/jpeg",
         upsert: true,
       });
-
     if (uploadError) {
       Alert.alert("Upload failed", uploadError.message);
       setUploadingAvatar(false);
       return;
     }
-
     const {
       data: { publicUrl },
     } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
     const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
-
     await supabase
       .from("profiles")
       .update({ avatar_url: urlWithCacheBust })
@@ -141,10 +132,28 @@ export default function ProfileScreen() {
     } = await supabase.auth.getUser();
 
     if (editing === "display_name") {
+      const oldName = profile?.display_name;
+      const newName = editValue.trim();
+
       await supabase
         .from("profiles")
-        .update({ display_name: editValue.trim() })
+        .update({ display_name: newName })
         .eq("id", user.id);
+
+      await supabase
+        .from("expenses")
+        .update({ paid_by: newName })
+        .eq("paid_by", oldName);
+
+      await supabase
+        .from("payments")
+        .update({ from_name: newName })
+        .eq("from_name", oldName);
+
+      await supabase
+        .from("payments")
+        .update({ to_name: newName })
+        .eq("to_name", oldName);
     } else if (editing === "username") {
       const clean = editValue.toLowerCase().replace(/[^a-z0-9_]/g, "");
       const { data: existing } = await supabase
