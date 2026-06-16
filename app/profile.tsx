@@ -24,6 +24,9 @@ export default function ProfileScreen() {
   const [editValue, setEditValue] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -211,6 +214,66 @@ export default function ProfileScreen() {
     router.replace("/login");
   }
 
+  async function handleDeleteAccount() {
+    if (Platform.OS === "ios") {
+      Alert.prompt(
+        "Delete Account",
+        "Enter your password to confirm. This cannot be undone.",
+        async (password) => {
+          if (!password) return;
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          const { error: signInError } = await supabase.auth.signInWithPassword(
+            {
+              email: user?.email || "",
+              password,
+            },
+          );
+          if (signInError) {
+            Alert.alert("Error", "Incorrect password. Please try again.");
+            return;
+          }
+          const { error } = await supabase.rpc("delete_user");
+          if (error) {
+            Alert.alert("Error", error.message);
+          } else {
+            await supabase.auth.signOut();
+            router.replace("/login");
+          }
+        },
+        "secure-text",
+      );
+    } else {
+      setShowDeleteConfirm(true);
+    }
+  }
+
+  async function confirmDeleteAccount() {
+    if (!deletePassword) return;
+    setDeleteLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user?.email || "",
+      password: deletePassword,
+    });
+    if (signInError) {
+      Alert.alert("Error", "Incorrect password. Please try again.");
+      setDeleteLoading(false);
+      return;
+    }
+    const { error } = await supabase.rpc("delete_user");
+    if (error) {
+      Alert.alert("Error", error.message);
+    } else {
+      await supabase.auth.signOut();
+      router.replace("/login");
+    }
+    setDeleteLoading(false);
+  }
+
   const initials = profile?.display_name
     ? profile.display_name
         .split(" ")
@@ -374,6 +437,49 @@ export default function ProfileScreen() {
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
 
+        {showDeleteConfirm ? (
+          <View style={styles.deleteConfirmBox}>
+            <Text style={styles.deleteConfirmLabel}>
+              Enter your password to confirm
+            </Text>
+            <TextInput
+              style={styles.deleteConfirmInput}
+              placeholder="Password"
+              placeholderTextColor="#8B8B8B"
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              secureTextEntry
+              autoFocus
+            />
+            <View style={styles.deleteConfirmActions}>
+              <TouchableOpacity
+                style={styles.cancelEditButton}
+                onPress={() => {
+                  setShowDeleteConfirm(false);
+                  setDeletePassword("");
+                }}
+              >
+                <Text style={styles.cancelEditText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteConfirmButton}
+                onPress={confirmDeleteAccount}
+                disabled={deleteLoading}
+              >
+                <Text style={styles.deleteConfirmButtonText}>
+                  {deleteLoading ? "Deleting..." : "Delete"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.deleteAccountButton}
+            onPress={handleDeleteAccount}
+          >
+            <Text style={styles.deleteAccountText}>Delete Account</Text>
+          </TouchableOpacity>
+        )}
         <View style={{ height: 40 }} />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -509,4 +615,45 @@ const styles = StyleSheet.create({
     borderColor: "#F15BB5",
   },
   logoutButtonText: { color: "#F15BB5", fontSize: 16, fontWeight: "600" },
+
+  deleteAccountButton: {
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 0.5,
+    borderColor: "#F15BB5",
+    marginTop: 12,
+  },
+  deleteAccountText: { color: "#F15BB5", fontSize: 15, fontWeight: "500" },
+
+  deleteConfirmBox: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 0.5,
+    borderColor: "#F15BB5",
+    marginTop: 12,
+    backgroundColor: "#161616",
+  },
+  deleteConfirmLabel: { color: "#8B8B8B", fontSize: 12, marginBottom: 10 },
+  deleteConfirmInput: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#262626",
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  deleteConfirmActions: { flexDirection: "row", gap: 8 },
+  deleteConfirmButton: {
+    flex: 1,
+    backgroundColor: "#F15BB5",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  deleteConfirmButtonText: {
+    color: "#0A0A0A",
+    fontSize: 13,
+    fontWeight: "700",
+  },
 });
