@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.danielbuilds.settle",
+      "buildNumber": "11",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Settle needs access to your photos to set a profile picture.",
         "NSCameraUsageDescription": "Settle needs access to your camera to take a profile picture.",
