@@ -1,386 +1,192 @@
-import { router } from "expo-router";
-import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition, ZoomIn } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { IconAndColorPicker } from "../components/EventActions";
+import PeoplePicker from "../components/PeoplePicker";
+import { Avatar, Button, Header, IconTile, PressableScale, SectionLabel, toast } from "../components/ui";
 import { supabase } from "../lib/supabase";
+import { EVENT_ICONS, colors, font, noOutline, palette, radius } from "../lib/theme";
+import useStore from "../store/useStore";
 
 export default function NewEventScreen() {
-  const [step, setStep] = useState(1);
+  const insets = useSafeAreaInsets();
+  const { with: withId } = useLocalSearchParams();
+  const userId = useStore((s) => s.userId);
+  const profile = useStore((s) => s.profile);
   const [name, setName] = useState("");
-  const [memberSearch, setMemberSearch] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [icon, setIcon] = useState(EVENT_ICONS[0]);
+  const [color, setColor] = useState(palette[Math.floor(Math.random() * palette.length)].key);
+  const [people, setPeople] = useState([]);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSearch = async (text) => {
-    setMemberSearch(text);
-    if (text.length < 2) {
-      setSearchResults([]);
+  // "Start an event with this friend" from the Friends tab
+  useEffect(() => {
+    if (!withId) return;
+    supabase
+      .from("profiles")
+      .select("id, username, display_name, avatar_url")
+      .eq("id", withId)
+      .maybeSingle()
+      .then(({ data }) => data && setPeople([data]));
+  }, [withId]);
+
+  const togglePerson = (p) => {
+    setPeople((list) =>
+      list.some((x) => x.id === p.id) ? list.filter((x) => x.id !== p.id) : [...list, p],
+    );
+  };
+
+  const create = async () => {
+    if (!name.trim()) {
+      setError("Give your event a name.");
       return;
     }
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, username, display_name")
-      .ilike("username", `%${text}%`)
-      .limit(5);
-    if (data) setSearchResults(data);
-  };
-
-  const addMember = (profile) => {
-    if (members.find((m) => m.id === profile.id)) return;
-    setMembers([...members, profile]);
-    setMemberSearch("");
-    setSearchResults([]);
-  };
-
-  const removeMember = (id) => {
-    setMembers(members.filter((m) => m.id !== id));
-  };
-
-  const handleCreate = async () => {
-    if (!name) return;
-    setLoading(true);
+    setSaving(true);
     setError("");
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { data: event, error: eventError } = await supabase
+    const base = {
+      name: name.trim(),
+      date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+      created_by: userId,
+    };
+    let { data: event, error: eventError } = await supabase
       .from("events")
-      .insert({
-        name,
-        date: new Date().toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        }),
-        created_by: user.id,
-      })
+      .insert({ ...base, icon, color })
       .select()
       .single();
-
+    // Before the latest database update, events have no icon/colour columns
+    if (eventError && /icon|color|schema cache/i.test(eventError.message)) {
+      ({ data: event, error: eventError } = await supabase.from("events").insert(base).select().single());
+    }
     if (eventError) {
+      setSaving(false);
       setError(eventError.message);
-      setLoading(false);
       return;
     }
-
-    await supabase
-      .from("event_members")
-      .insert({ event_id: event.id, user_id: user.id, status: "active" });
-
-    for (const member of members) {
-      await supabase
-        .from("event_members")
-        .insert({ event_id: event.id, user_id: member.id, status: "active" });
+    const rows = [userId, ...people.map((p) => p.id)]
+      .filter((id, i, all) => all.indexOf(id) === i)
+      .map((id) => ({ event_id: event.id, user_id: id, status: "active" }));
+    const { error: membersError } = await supabase.from("event_members").insert(rows);
+    setSaving(false);
+    if (membersError) {
+      setError(membersError.message);
+      return;
     }
-
-    router.replace("/");
-    setLoading(false);
+    toast(`${event.name} created`);
+    router.replace(`/event/${event.id}`);
   };
 
-  const getInitials = (name) =>
-    name
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "?";
-
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      {step === 1 ? (
-        <>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <View style={{ paddingTop: Platform.OS === "ios" ? 14 : insets.top + 8 }}>
+        <Header title="New event" onBack={() => router.back()} />
+      </View>
 
-          <View style={styles.stepRow}>
-            <View style={styles.stepActive}>
-              <Text style={styles.stepActiveText}>1</Text>
-            </View>
-            <View style={styles.stepLine} />
-            <View style={styles.stepInactive}>
-              <Text style={styles.stepInactiveText}>2</Text>
-            </View>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.preview}>
+          <IconTile icon={icon} colorKey={color} size={72} />
+        </Animated.View>
+        <TextInput
+          value={name}
+          onChangeText={setName}
+          placeholder="Name your event"
+          placeholderTextColor={colors.textMuted}
+          selectionColor={colors.mint}
+          autoFocus
+          style={[styles.nameInput, noOutline]}
+          accessibilityLabel="Event name"
+        />
+        <Text style={[font.small, { color: colors.textMuted, textAlign: "center", marginBottom: 22 }]}>
+          Sushi night, Montreal trip, apartment bills…
+        </Text>
+
+        <IconAndColorPicker icon={icon} color={color} onIcon={setIcon} onColor={setColor} />
+
+        <SectionLabel>Who&apos;s in?</SectionLabel>
+        <Animated.View layout={LinearTransition.springify()} style={styles.selected}>
+          <View style={styles.personChip}>
+            <Avatar id={userId} name={profile?.display_name} uri={profile?.avatar_url} size={26} />
+            <Text style={[font.small, { color: colors.text, fontWeight: "700" }]}>You</Text>
           </View>
+          {people.map((p) => (
+            <Animated.View key={p.id} entering={ZoomIn.springify().damping(15)} exiting={FadeOut.duration(150)} layout={LinearTransition.springify()}>
+              <PressableScale onPress={() => togglePerson(p)} style={[styles.personChip, styles.personChipOn]} accessibilityLabel={`Remove ${p.display_name}`}>
+                <Avatar id={p.id} name={p.display_name} uri={p.avatar_url} size={26} />
+                <Text style={[font.small, { color: colors.text, fontWeight: "700" }]}>{p.display_name}</Text>
+                <Ionicons name="close" size={14} color={colors.textSecondary} />
+              </PressableScale>
+            </Animated.View>
+          ))}
+        </Animated.View>
 
-          <Text style={styles.title}>New Event</Text>
-          <Text style={styles.subtitle}>What are you splitting today?</Text>
+        <PeoplePicker userId={userId} selectedIds={people.map((p) => p.id)} onPick={togglePerson} />
+        <Text style={[font.small, { color: colors.textMuted, marginTop: 4 }]}>
+          You can also invite people later with a link or QR code.
+        </Text>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <Animated.Text entering={FadeInDown} style={[font.small, { color: colors.pink, marginTop: 16 }]}>
+            {error}
+          </Animated.Text>
+        ) : null}
+      </ScrollView>
 
-          <Text style={styles.label}>Event name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Sushi Night, BBQ, Road Trip"
-            placeholderTextColor="#8B8B8B"
-            value={name}
-            onChangeText={setName}
-            autoFocus
-          />
-
-          <View style={styles.spacer} />
-
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              !name && styles.primaryButtonDisabled,
-            ]}
-            onPress={() => {
-              if (!name) return;
-              setStep(2);
-            }}
-          >
-            <Text style={styles.primaryButtonText}>Next →</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <TouchableOpacity
-            onPress={() => setStep(1)}
-            style={styles.backButton}
-          >
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-
-          <View style={styles.stepRow}>
-            <View style={styles.stepDone}>
-              <Text style={styles.stepDoneText}>✓</Text>
-            </View>
-            <View style={styles.stepLineDone} />
-            <View style={styles.stepActive}>
-              <Text style={styles.stepActiveText}>2</Text>
-            </View>
-          </View>
-
-          <Text style={styles.title}>Add Members</Text>
-          <Text style={styles.subtitle}>Who's splitting with you?</Text>
-
-          <Text style={styles.label}>Search by username</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="@username"
-            placeholderTextColor="#8B8B8B"
-            value={memberSearch}
-            onChangeText={handleSearch}
-            autoCapitalize="none"
-            autoFocus
-          />
-
-          {searchResults.length > 0 && (
-            <View style={styles.searchResults}>
-              {searchResults.map((profile) => (
-                <TouchableOpacity
-                  key={profile.id}
-                  style={styles.searchResult}
-                  onPress={() => addMember(profile)}
-                >
-                  <Text style={styles.searchResultName}>
-                    {profile.display_name}
-                  </Text>
-                  <Text style={styles.searchResultUsername}>
-                    @{profile.username}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {members.length > 0 && (
-            <>
-              <Text style={styles.label}>Members added</Text>
-              {members.map((member) => (
-                <View key={member.id} style={styles.memberRow}>
-                  <View style={styles.memberAvatar}>
-                    <Text style={styles.memberAvatarText}>
-                      {getInitials(member.display_name)}
-                    </Text>
-                  </View>
-                  <Text style={styles.memberName}>{member.display_name}</Text>
-                  <TouchableOpacity onPress={() => removeMember(member.id)}>
-                    <Text style={styles.removeButton}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </>
-          )}
-
-          <View style={styles.spacer} />
-
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleCreate}
-            disabled={loading}
-          >
-            <Text style={styles.primaryButtonText}>
-              {loading ? "Creating..." : "Create Event ⚡"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => setStep(1)}
-          >
-            <Text style={styles.cancelButtonText}>← Back</Text>
-          </TouchableOpacity>
-        </>
-      )}
+      <Animated.View entering={FadeIn} style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+        <Button
+          title={people.length ? `Create with ${people.length + 1} people` : "Create event"}
+          haptic="medium"
+          loading={saving}
+          onPress={create}
+        />
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0A0A",
-    paddingHorizontal: 20,
-    paddingTop: 60,
-  },
-  backButton: { marginBottom: 24 },
-  backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
-  stepRow: {
-    flexDirection: "row",
+  preview: {
     alignItems: "center",
-    marginBottom: 32,
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  nameInput: {
+    color: colors.text,
+    fontSize: 26,
+    fontWeight: "800",
+    textAlign: "center",
+    paddingVertical: 6,
+    letterSpacing: -0.5,
+  },
+  selected: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
-  },
-  stepActive: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#00F5D4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepActiveText: { color: "#0A0A0A", fontSize: 13, fontWeight: "800" },
-  stepInactive: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#161616",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#262626",
-  },
-  stepInactiveText: { color: "#8B8B8B", fontSize: 13, fontWeight: "600" },
-  stepDone: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#0A2A24",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#00F5D4",
-  },
-  stepDoneText: { color: "#00F5D4", fontSize: 13, fontWeight: "800" },
-  stepLine: { flex: 1, height: 1, backgroundColor: "#262626" },
-  stepLineDone: { flex: 1, height: 1, backgroundColor: "#00F5D4" },
-  title: { color: "#FFFFFF", fontSize: 28, fontWeight: "700", marginBottom: 8 },
-  subtitle: { color: "#8B8B8B", fontSize: 15, marginBottom: 32 },
-  label: {
-    color: "#8B8B8B",
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: "#FFFFFF",
-    borderWidth: 0.5,
-    borderColor: "#262626",
     marginBottom: 16,
   },
-  searchResults: {
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: "#262626",
-    marginBottom: 20,
-    overflow: "hidden",
-  },
-  searchResult: {
-    padding: 14,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#262626",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  searchResultName: { color: "#FFFFFF", fontSize: 14, fontWeight: "500" },
-  searchResultUsername: { color: "#F15BB5", fontSize: 13 },
-  memberRow: {
+  personChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 0.5,
-    borderColor: "#262626",
-    gap: 12,
-  },
-  memberAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#2A0A1A",
-    alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 5,
+    paddingLeft: 5,
+    paddingRight: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#F15BB5",
+    borderColor: colors.border,
   },
-  memberAvatarText: { color: "#F15BB5", fontSize: 13, fontWeight: "600" },
-  memberName: { color: "#FFFFFF", fontSize: 14, fontWeight: "500", flex: 1 },
-  removeButton: { color: "#F15BB5", fontSize: 14, fontWeight: "600" },
-  spacer: { flex: 1 },
-  primaryButton: {
-    backgroundColor: "#00F5D4",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 12,
+  personChipOn: {
+    backgroundColor: colors.mintSoft,
+    borderColor: colors.mintBorder,
   },
-  primaryButtonDisabled: { opacity: 0.4 },
-  primaryButtonText: { color: "#0A0A0A", fontSize: 16, fontWeight: "700" },
-  cancelButton: { padding: 16, alignItems: "center", marginBottom: 20 },
-  cancelButtonText: { color: "#8B8B8B", fontSize: 15 },
-  error: {
-    color: "#F15BB5",
-    fontSize: 13,
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: "#2A0A1A",
-    borderRadius: 8,
-    borderWidth: 0.5,
-    borderColor: "#F15BB5",
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: colors.bg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
 });

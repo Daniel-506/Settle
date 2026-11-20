@@ -1,536 +1,340 @@
+import { Ionicons } from "@expo/vector-icons";
 import { setStringAsync } from "expo-clipboard";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  FlatList,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  Avatar,
+  Button,
+  Card,
+  EmptyState,
+  Header,
+  PressableScale,
+  Segmented,
+  SectionLabel,
+  SkeletonRows,
+  confirm,
+  notify,
+  toast,
+} from "../components/ui";
+import { loadEventData, nameFor } from "../lib/eventData";
+import { formatMoney } from "../lib/format";
 import { calculateSplit } from "../lib/splitCalculator";
 import { supabase } from "../lib/supabase";
+import { colors, font, money, radius } from "../lib/theme";
+import useStore from "../store/useStore";
 
 export default function SettleScreen() {
   const { event_id } = useLocalSearchParams();
-  const [expenses, setExpenses] = useState([]);
+  const insets = useSafeAreaInsets();
+  const userId = useStore((s) => s.userId);
+  const [eventName, setEventName] = useState("");
   const [members, setMembers] = useState([]);
-  const [settledPayments, setSettledPayments] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("mine");
-  const [copied, setCopied] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [settled, setSettled] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState("mine");
+  const [busy, setBusy] = useState(false);
+  const timer = useRef(null);
+
+  const load = useCallback(async () => {
+    const [{ data: ev }, data] = await Promise.all([
+      supabase.from("events").select("name").eq("id", event_id).maybeSingle(),
+      loadEventData(event_id),
+    ]);
+    setEventName(ev?.name || "");
+    setMembers(data.members);
+    setExpenses(data.expenses);
+    setSettled(data.payments);
+    setLoaded(true);
+  }, [event_id]);
 
   useFocusEffect(
     useCallback(() => {
-      loadAll();
-    }, []),
+      load();
+    }, [load]),
   );
 
-  async function loadAll() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .single();
-    setCurrentUser(profile?.display_name || user.email);
-
-    const { data: expenseData } = await supabase
-      .from("expenses")
-      .select("*")
-      .eq("event_id", event_id);
-    if (expenseData) setExpenses(expenseData);
-
-    const { data: memberRows } = await supabase
-      .from("event_members")
-      .select("user_id")
-      .eq("event_id", event_id);
-    if (memberRows && memberRows.length > 0) {
-      const userIds = memberRows.map((m) => m.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, username, display_name, paypal_username, email")
-        .in("id", userIds);
-      setMembers(profiles || []);
-    }
-
-    const { data: settled } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("event_id", event_id)
-      .eq("status", "paid");
-    if (settled) setSettledPayments(settled);
-    console.log("memberIdToName:", memberIdToName);
-    console.log(
-      "first expense split_member_ids:",
-      expenses[0]?.split_member_ids,
+  // Live updates when someone else pays or edits
+  useEffect(() => {
+    const reload = () => {
+      clearTimeout(timer.current);
+      timer.current = setTimeout(load, 300);
+    };
+    const channel = supabase.channel(`settle-${event_id}-${Date.now()}`);
+    ["payments", "expenses"].forEach((table) =>
+      channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table, filter: `event_id=eq.${event_id}` },
+        reload,
+      ),
     );
-  }
+    channel.subscribe();
+    return () => {
+      clearTimeout(timer.current);
+      channel.unsubscribe();
+    };
+  }, [event_id, load]);
 
-  async function markAsPaid(payment) {
-    await supabase.from("payments").insert({
+  // Name for anyone, including a payer who has since left the event
+  const nameOf = (id) => {
+    const fallback =
+      expenses.find((e) => e.paidById === id)?.paid_by ||
+      settled.find((p) => p.fromId === id)?.from_name ||
+      settled.find((p) => p.toId === id)?.to_name ||
+      "Unknown";
+    return nameFor(id, members, fallback);
+  };
+  const person = (id) => members.find((m) => m.id === id) || { id, display_name: nameOf(id) };
+
+  const record = async (t, receivedByMe = false) => {
+    if (busy) return;
+    if (receivedByMe) {
+      const ok = await confirm({
+        title: "Mark as received?",
+        message: `Confirm ${nameOf(t.fromId)} paid you ${formatMoney(t.amount)}.`,
+        confirmText: "Got it",
+      });
+      if (!ok) return;
+    }
+    setBusy(true);
+    const { error } = await supabase.from("payments").insert({
       event_id,
-      from_name: payment.from,
-      to_name: payment.to,
-      amount: payment.amount,
+      from_id: t.fromId,
+      to_id: t.toId,
+      // name copies are still read by older app builds
+      from_name: nameOf(t.fromId),
+      to_name: nameOf(t.toId),
+      amount: t.amount,
       status: "paid",
     });
-    loadAll();
-  }
-  async function unmarkPaid(payment) {
-    console.log("unmark:", payment.from, payment.to, event_id);
-    const { error } = await supabase
-      .from("payments")
-      .delete()
-      .eq("event_id", event_id)
-      .eq("from_name", payment.from)
-      .eq("to_name", payment.to);
-    console.log("unmark error:", error);
-    loadAll();
-  }
+    setBusy(false);
+    if (error) {
+      toast(error.message, "error");
+      return;
+    }
+    toast(receivedByMe ? "Marked as received" : "Marked as paid");
+    load();
+  };
 
-  async function openPayPal(payment) {
-    const recipient = members.find((m) => m.display_name === payment.to);
-    if (!recipient?.paypal_username) {
-      alert(`${payment.to} hasn't set up PayPal yet`);
+  const undo = async (p) => {
+    if (busy) return;
+    setBusy(true);
+    // Only this one payment, not every payment between these two people
+    const { error } = await supabase.from("payments").delete().eq("id", p.id);
+    setBusy(false);
+    if (error) toast(error.message, "error");
+    else toast("Payment undone", "info");
+    load();
+  };
+
+  const payPal = (t) => {
+    const r = members.find((m) => m.id === t.toId);
+    if (!r?.paypal_username) {
+      notify("No PayPal yet", `${nameOf(t.toId)} hasn't added a PayPal username.`);
       return;
     }
     Linking.openURL(
-      `https://paypal.me/${recipient.paypal_username}/${payment.amount}`,
+      `https://paypal.me/${encodeURIComponent(r.paypal_username)}/${t.amount.toFixed(2)}CAD`,
     );
-  }
+  };
 
-  async function copyEmail(payment) {
-    const recipient = members.find((m) => m.display_name === payment.to);
-    if (!recipient?.email) {
-      alert(`${payment.to} hasn't set up their email yet`);
+  const eTransfer = async (t) => {
+    const r = members.find((m) => m.id === t.toId);
+    if (!r?.email) {
+      notify("No email yet", `${nameOf(t.toId)} hasn't added an email.`);
       return;
     }
-    await setStringAsync(recipient.email);
-    setCopied(payment.to);
-    setTimeout(() => setCopied(null), 2000);
-  }
+    await setStringAsync(r.email);
+    toast(`${r.email} copied for e-Transfer`);
+  };
 
-  function isPaid(payment) {
-    return settledPayments.some(
-      (sp) =>
-        sp.from_name === payment.from &&
-        sp.to_name === payment.to &&
-        Math.abs(sp.amount - payment.amount) < 0.01,
-    );
-  }
+  const memberIds = members.map((m) => m.id);
+  const { total, transfers, balanceById } = calculateSplit(expenses, memberIds, settled);
+  const mine = balanceById[userId] || 0;
+  const iOwe = transfers.filter((t) => t.fromId === userId);
+  const owedToMe = transfers.filter((t) => t.toId === userId);
+  const mySettled = settled.filter((p) => p.fromId === userId || p.toId === userId);
 
-  const memberNames = members.map((m) => m.display_name || "Unknown");
-  const memberIdToName = {};
-  members.forEach((m) => {
-    memberIdToName[m.id] = m.display_name;
-  });
-  console.log(
-    "calling calc with expenses:",
-    expenses.map((e) => ({
-      name: e.name,
-      amount: e.amount,
-      paidBy: e.paid_by,
-      splitMembers: e.split_member_ids
-        ?.map((uid) => memberIdToName[uid])
-        .filter(Boolean),
-    })),
-  );
-  const { total, payments } =
-    expenses.length > 0 && memberNames.length > 0
-      ? calculateSplit(
-          expenses.map((e) => ({
-            ...e,
-            paidBy: e.paid_by,
-            splitMembers: e.split_member_ids
-              ? e.split_member_ids
-                  .map((uid) => memberIdToName[uid])
-                  .filter(Boolean)
-              : memberNames,
-            customSplits: e.custom_splits || {},
-          })),
-          memberNames,
-        )
-      : { total: 0, payments: [] };
-
-  const iOwe = payments.filter((p) => p.from === currentUser);
-  const owedToMe = payments.filter((p) => p.to === currentUser);
-
-  console.log("expenses loaded:", expenses.length);
-  console.log("members loaded:", memberNames);
-  console.log("payments calc:", payments);
-
-  const renderPaymentCard = (item) => {
-    const paid = isPaid(item);
-    const isMyDebt = item.from === currentUser;
+  const transferCard = (t, i) => {
+    const isMyDebt = t.fromId === userId;
+    const toMe = t.toId === userId;
     return (
-      <View
-        key={`${item.from}-${item.to}`}
-        style={[styles.card, paid && styles.cardPaid]}
+      <Animated.View
+        key={`${t.fromId}-${t.toId}`}
+        entering={FadeInDown.delay(i * 50).springify().damping(18)}
+        exiting={FadeOut.duration(200)}
+        layout={LinearTransition.springify()}
       >
-        <View
-          style={[
-            styles.cardAccent,
-            isMyDebt ? styles.cardAccentPink : styles.cardAccentCyan,
-            paid && styles.cardAccentPaid,
-          ]}
-        />
-        <View style={styles.cardLeft}>
-          <View style={styles.paymentRow}>
-            <View
-              style={[
-                styles.nameTag,
-                isMyDebt ? styles.nameTagPink : styles.nameTagCyan,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.nameTagText,
-                  isMyDebt ? styles.nameTagTextPink : styles.nameTagTextCyan,
-                ]}
-              >
-                {isMyDebt ? "You" : item.from}
+        <Card tone={isMyDebt ? "pink" : toMe ? "mint" : undefined} style={styles.transfer}>
+          <View style={styles.people}>
+            <Avatar id={t.fromId} name={nameOf(t.fromId)} uri={person(t.fromId).avatar_url} size={40} />
+            <Ionicons name="arrow-forward" size={18} color={colors.textMuted} />
+            <Avatar id={t.toId} name={nameOf(t.toId)} uri={person(t.toId).avatar_url} size={40} />
+            <View style={{ flex: 1, marginLeft: 6 }}>
+              <Text style={[font.body, { color: colors.text, fontWeight: "700" }]} numberOfLines={1}>
+                {isMyDebt ? nameOf(t.toId) : toMe ? nameOf(t.fromId) : `${nameOf(t.fromId)} → ${nameOf(t.toId)}`}
+              </Text>
+              <Text style={[font.small, { color: colors.textSecondary }]}>
+                {isMyDebt ? "you owe them" : toMe ? "owes you" : "to settle"}
               </Text>
             </View>
-            <Text style={styles.arrow}>→</Text>
-            <View
+            <Text
               style={[
-                styles.nameTag,
-                !isMyDebt ? styles.nameTagPink : styles.nameTagCyan,
+                font.h2,
+                money,
+                { color: isMyDebt ? colors.pink : toMe ? colors.mint : colors.text },
               ]}
             >
-              <Text
-                style={[
-                  styles.nameTagText,
-                  !isMyDebt ? styles.nameTagTextPink : styles.nameTagTextCyan,
-                ]}
-              >
-                {!isMyDebt ? "You" : item.to}
-              </Text>
-            </View>
+              {formatMoney(t.amount)}
+            </Text>
           </View>
-          {paid && (
-            <View style={styles.settledRow}>
-              <Text style={styles.paidLabel}>✓ Settled</Text>
-              <TouchableOpacity onPress={() => unmarkPaid(item)}>
-                <Text style={styles.unsettleText}>Undo</Text>
-              </TouchableOpacity>
+          {isMyDebt && (
+            <View style={styles.actions}>
+              <Button title="e-Transfer" size="sm" variant="secondary" icon="mail-outline" style={{ flex: 1 }} onPress={() => eTransfer(t)} />
+              <Button title="PayPal" size="sm" variant="secondary" icon="logo-paypal" style={{ flex: 1 }} onPress={() => payPal(t)} />
+              <Button title="Paid" size="sm" variant="light" icon="checkmark" style={{ flex: 1 }} haptic="success" onPress={() => record(t)} />
             </View>
           )}
-        </View>
-        <View style={styles.cardRight}>
-          <Text
-            style={[
-              styles.amount,
-              paid && styles.amountPaid,
-              isMyDebt ? styles.amountPink : styles.amountCyan,
-            ]}
-          >
-            ${item.amount.toFixed(2)}
-          </Text>
-          {!paid && isMyDebt && (
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.copyButton}
-                onPress={() => copyEmail(item)}
-              >
-                <Text style={styles.copyButtonText}>
-                  {copied === item.to ? "Copied!" : "Email"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.paypalButton}
-                onPress={() => openPayPal(item)}
-              >
-                <Text style={styles.paypalButtonText}>PayPal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.payButton}
-                onPress={() => markAsPaid(item)}
-              >
-                <Text style={styles.payButtonText}>Paid</Text>
-              </TouchableOpacity>
+          {toMe && (
+            <View style={styles.actions}>
+              <Button title="Got it" size="sm" variant="primary" icon="checkmark" style={{ flex: 1 }} onPress={() => record(t, true)} />
             </View>
           )}
-        </View>
-      </View>
+        </Card>
+      </Animated.View>
     );
   };
 
-  const renderAllPayment = ({ item }) => {
-    const paid = isPaid(item);
-    const isMyDebt = item.from === currentUser;
-    return (
-      <View style={[styles.card, paid && styles.cardPaid]}>
-        <View
-          style={[
-            styles.cardAccent,
-            isMyDebt ? styles.cardAccentPink : styles.cardAccentCyan,
-            paid && styles.cardAccentPaid,
-          ]}
-        />
-        <View style={styles.cardLeft}>
-          <View style={styles.paymentRow}>
-            <View style={styles.nameTagPlain}>
-              <Text style={styles.nameTagPlainText}>{item.from}</Text>
-            </View>
-            <Text style={styles.arrow}>→</Text>
-            <View style={styles.nameTagPlain}>
-              <Text style={styles.nameTagPlainText}>{item.to}</Text>
-            </View>
-          </View>
-          {paid && <Text style={styles.paidLabel}>✓ Settled</Text>}
-        </View>
-        <View style={styles.cardRight}>
-          <Text style={[styles.amount, paid && styles.amountPaid]}>
-            ${item.amount.toFixed(2)}
-          </Text>
-          {!paid && item.from === currentUser && (
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.paypalButton}
-                onPress={() => openPayPal(item)}
-              >
-                <Text style={styles.paypalButtonText}>PayPal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.payButton}
-                onPress={() => markAsPaid(item)}
-              >
-                <Text style={styles.payButtonText}>Paid</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+  const settledRow = (p, i, list) => (
+    <Animated.View
+      key={String(p.id)}
+      entering={FadeInDown.delay(i * 30)}
+      layout={LinearTransition.springify()}
+      style={[styles.settledRow, i < list.length - 1 && styles.rowBorder]}
+    >
+      <View style={styles.tick}>
+        <Ionicons name="checkmark" size={14} color={colors.mint} />
       </View>
-    );
-  };
+      <Text style={[font.body, { color: colors.textSecondary, flex: 1 }]} numberOfLines={1}>
+        {p.fromId === userId ? "You" : nameOf(p.fromId)} paid {p.toId === userId ? "you" : nameOf(p.toId)}
+      </Text>
+      <Text style={[font.body, money, { color: colors.textSecondary }]}>{formatMoney(p.amount)}</Text>
+      {(p.fromId === userId || p.toId === userId) && (
+        <PressableScale onPress={() => undo(p)} hitSlop={8}>
+          <Text style={[font.small, { color: colors.pink, fontWeight: "700" }]}>Undo</Text>
+        </PressableScale>
+      )}
+    </Animated.View>
+  );
+
+  const list = tab === "mine" ? [...iOwe, ...owedToMe] : transfers;
+  const history = tab === "mine" ? mySettled : settled;
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backText}>← Back</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.title}>Settle Up</Text>
-
-      <View style={styles.summaryRow}>
-        <View style={[styles.summaryCard, styles.summaryCardCyan]}>
-          <Text style={styles.summaryLabel}>Total</Text>
-          <Text style={styles.summaryAmount}>${total.toFixed(2)}</Text>
-        </View>
-        <View style={[styles.summaryCard, styles.summaryCardPink]}>
-          <Text style={styles.summaryLabel}>Payments</Text>
-          <Text style={[styles.summaryAmount, styles.summaryAmountPink]}>
-            {payments.length}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "mine" && styles.activeTab]}
-          onPress={() => setActiveTab("mine")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "mine" && styles.activeTabText,
-            ]}
-          >
-            My Payments
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "all" && styles.activeTab]}
-          onPress={() => setActiveTab("all")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "all" && styles.activeTabText,
-            ]}
-          >
-            All Payments
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {activeTab === "mine" ? (
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.sectionHeader}>You owe</Text>
-          {iOwe.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🎉</Text>
-              <Text style={styles.empty}>You're all settled up!</Text>
-            </View>
-          ) : (
-            iOwe.map((item) => renderPaymentCard(item))
-          )}
-          <Text style={[styles.sectionHeader, { marginTop: 20 }]}>
-            Owed to you
-          </Text>
-          {owedToMe.length === 0 ? (
-            <Text style={styles.empty}>No one owes you right now</Text>
-          ) : (
-            owedToMe.map((item) => renderPaymentCard(item))
-          )}
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      ) : (
-        <FlatList
-          data={payments}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={renderAllPayment}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🎉</Text>
-              <Text style={styles.empty}>
-                {expenses.length === 0
-                  ? "No expenses yet"
-                  : "Everyone is settled up!"}
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 6 }}>
+      <Header title="Settle up" subtitle={eventName} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <Animated.View entering={FadeInDown.springify().damping(18)}>
+          <Card style={styles.summary}>
+            <View style={{ flex: 1 }}>
+              <Text style={[font.label, { color: colors.textSecondary }]}>
+                {mine > 0.004 ? "You're owed" : mine < -0.004 ? "You owe" : "You"}
+              </Text>
+              <Text
+                style={[
+                  font.title,
+                  money,
+                  { color: mine > 0.004 ? colors.mint : mine < -0.004 ? colors.pink : colors.text },
+                ]}
+              >
+                {Math.abs(mine) < 0.005 ? "Settled" : formatMoney(mine)}
               </Text>
             </View>
-          }
-        />
-      )}
+            <View style={styles.vr} />
+            <View style={{ flex: 1 }}>
+              <Text style={[font.label, { color: colors.textSecondary }]}>Event total</Text>
+              <Text style={[font.title, money, { color: colors.text }]}>{formatMoney(total)}</Text>
+            </View>
+          </Card>
+        </Animated.View>
+
+        <View style={{ marginVertical: 18 }}>
+          <Segmented
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "mine", label: "Mine" },
+              { value: "all", label: `Everyone · ${transfers.length}` },
+            ]}
+          />
+        </View>
+
+        {!loaded ? (
+          <SkeletonRows count={3} />
+        ) : list.length === 0 ? (
+          <EmptyState
+            icon="checkmark-done"
+            colorKey="mint"
+            title={expenses.length === 0 ? "Nothing to settle yet" : tab === "mine" ? "You're all settled up" : "Everyone is settled up"}
+            body={expenses.length === 0 ? "Add some expenses first." : "Nice. Nobody owes anything right now."}
+          />
+        ) : (
+          <View style={{ gap: 10 }}>{list.map(transferCard)}</View>
+        )}
+
+        {history.length > 0 && (
+          <>
+            <SectionLabel style={{ marginTop: 24 }}>Settled</SectionLabel>
+            <Card style={{ paddingVertical: 2 }}>{history.map(settledRow)}</Card>
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0A0A",
-    paddingTop: 60,
-    paddingHorizontal: 20,
-  },
-  backButton: { marginBottom: 16 },
-  backText: { color: "#00F5D4", fontSize: 15, fontWeight: "500" },
-  title: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 20,
-  },
-  summaryRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
-  summaryCard: { flex: 1, borderRadius: 12, padding: 16, borderWidth: 1 },
-  summaryCardCyan: { backgroundColor: "#0A2A24", borderColor: "#00F5D4" },
-  summaryCardPink: { backgroundColor: "#2A0A1A", borderColor: "#F15BB5" },
-  summaryLabel: {
-    color: "#8B8B8B",
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  summaryAmount: { color: "#00F5D4", fontSize: 24, fontWeight: "700" },
-  summaryAmountPink: { color: "#F15BB5" },
-  tabs: {
+  summary: {
     flexDirection: "row",
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 16,
-    borderWidth: 0.5,
-    borderColor: "#262626",
+    padding: 18,
+    borderRadius: radius.xl,
   },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 9 },
-  activeTab: { backgroundColor: "#00F5D4" },
-  tabText: { color: "#8B8B8B", fontSize: 13, fontWeight: "500" },
-  activeTabText: { color: "#0A0A0A", fontWeight: "700" },
-  sectionHeader: {
-    color: "#8B8B8B",
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 10,
+  vr: {
+    width: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 16,
   },
-  card: {
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 0.5,
-    borderColor: "#262626",
+  transfer: {
+    gap: 14,
+  },
+  people: {
     flexDirection: "row",
     alignItems: "center",
-    overflow: "hidden",
+    gap: 6,
   },
-  cardPaid: { opacity: 0.5 },
-  cardAccent: { width: 3, alignSelf: "stretch" },
-  cardAccentCyan: { backgroundColor: "#00F5D4" },
-  cardAccentPink: { backgroundColor: "#F15BB5" },
-  cardAccentPaid: { backgroundColor: "#8B8B8B" },
-  cardLeft: { flex: 1, padding: 14 },
-  cardRight: { alignItems: "flex-end", paddingRight: 14, gap: 8 },
-  paymentRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  nameTag: {
-    borderRadius: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderWidth: 0.5,
-  },
-  nameTagCyan: { backgroundColor: "#0A2A24", borderColor: "#00F5D4" },
-  nameTagPink: { backgroundColor: "#2A0A1A", borderColor: "#F15BB5" },
-  nameTagText: { fontSize: 13, fontWeight: "600" },
-  nameTagTextCyan: { color: "#00F5D4" },
-  nameTagTextPink: { color: "#F15BB5" },
-  nameTagPlain: {
-    backgroundColor: "#262626",
-    borderRadius: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-  },
-  nameTagPlainText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
-  arrow: { color: "#8B8B8B", fontSize: 14 },
-  paidLabel: { color: "#00F5D4", fontSize: 11, fontWeight: "600" },
-  buttonRow: { flexDirection: "row", gap: 6 },
-  amount: { fontSize: 16, fontWeight: "700" },
-  amountCyan: { color: "#00F5D4" },
-  amountPink: { color: "#F15BB5" },
-  amountPaid: { color: "#8B8B8B", textDecorationLine: "line-through" },
-  copyButton: {
-    backgroundColor: "#262626",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderWidth: 0.5,
-    borderColor: "#363636",
-  },
-  copyButtonText: { color: "#FFFFFF", fontSize: 11, fontWeight: "600" },
-  paypalButton: {
-    backgroundColor: "#2A0A1A",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderWidth: 0.5,
-    borderColor: "#F15BB5",
-  },
-  paypalButtonText: { color: "#F15BB5", fontSize: 11, fontWeight: "600" },
-  payButton: {
-    backgroundColor: "#00F5D4",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+  actions: {
+    flexDirection: "row",
+    gap: 8,
   },
   settledRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginTop: 6,
+    gap: 10,
+    paddingVertical: 12,
   },
-  unsettleText: {
-    color: "#8B8B8B",
-    fontSize: 11,
-    textDecorationLine: "underline",
-    marginTop: 1,
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  payButtonText: { color: "#0A0A0A", fontSize: 11, fontWeight: "700" },
-  emptyState: { alignItems: "center", paddingTop: 20 },
-  emptyIcon: { fontSize: 28, marginBottom: 8 },
-  empty: { color: "#8B8B8B", fontSize: 14, textAlign: "center" },
+  tick: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.mintSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

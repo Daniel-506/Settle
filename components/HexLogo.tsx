@@ -19,14 +19,14 @@ export default function HexLogo({ size = 32 }) {
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <Polygon
         points={hexPoints(r)}
-        fill="#0A0A0A"
-        stroke="#F15BB5"
+        fill="#0E0E12"
+        stroke="#FF6B8B"
         strokeWidth="1.5"
       />
       <Polygon
         points={hexPoints(ri)}
         fill="none"
-        stroke="#00F5D4"
+        stroke="#3DDCB2"
         strokeWidth="1"
       />
       <Text

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Settle",
     "slug": "Settle",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "settle",
@@ -13,10 +13,11 @@
       "bundleIdentifier": "com.danielbuilds.settle",
       "buildNumber": "11",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Settle needs access to your photos to set a profile picture.",
-        "NSCameraUsageDescription": "Settle needs access to your camera to take a profile picture.",
+        "NSPhotoLibraryUsageDescription": "Settle uses your photos to set a profile picture or attach a receipt.",
+        "NSCameraUsageDescription": "Settle uses your camera to take a profile picture or a photo of a receipt.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.danielbuilds.settle",
@@ -32,7 +33,7 @@
       ]
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -50,7 +51,14 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-apple-authentication",
+      [
+        "expo-notifications",
+        {
+          "color": "#3DDCB2"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

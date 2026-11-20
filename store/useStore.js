@@ -1,33 +1,42 @@
 import { create } from "zustand";
+import { supabase } from "../lib/supabase";
 
-const useStore = create((set) => ({
-  // The list of expenses for the current event
-  expenses: [
-    {
-      id: "1",
-      name: "Salmon fillet",
-      amount: 80.0,
-      paidBy: "Jake",
-      splitBetween: 4,
-    },
-    { id: "2", name: "Drinks", amount: 33.24, paidBy: "You", splitBetween: 4 },
-    {
-      id: "3",
-      name: "Sauce & ginger",
-      amount: 5.76,
-      paidBy: "You",
-      splitBetween: 4,
-    },
-  ],
+// Shared app state: who's signed in, their profile, and tab badge counts.
+const useStore = create((set, get) => ({
+  // null = still checking, true/false once we know
+  hasProfile: null,
+  setHasProfile: (hasProfile) => set({ hasProfile }),
 
-  // Function to add a new expense
-  addExpense: (expense) =>
-    set((state) => ({
-      expenses: [...state.expenses, expense],
-    })),
+  userId: null,
+  setUserId: (userId) => set({ userId }),
 
-  // Function to clear all expenses
-  clearExpenses: () => set({ expenses: [] }),
+  profile: null,
+  setProfile: (profile) => set({ profile }),
+  refreshProfile: async () => {
+    const userId = get().userId;
+    if (!userId) return null;
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    set({ profile: data || null });
+    return data;
+  },
+
+  // A join/friend link opened before signing in, handled after login
+  pendingLink: null,
+  setPendingLink: (pendingLink) => set({ pendingLink }),
+
+  // Tab badges
+  friendRequests: 0,
+  setFriendRequests: (friendRequests) => set({ friendRequests }),
+  unreadActivity: 0,
+  setUnreadActivity: (unreadActivity) => set({ unreadActivity }),
+
+  // Bumped whenever data changes, so screens can refresh
+  dataVersion: 0,
+  bumpData: () => set((s) => ({ dataVersion: s.dataVersion + 1 })),
 }));
 
-module.exports = useStore;
+export default useStore;

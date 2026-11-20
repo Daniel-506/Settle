@@ -1,249 +1,237 @@
-import { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Linking from "expo-linking";
+import { useEffect, useState } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import HexLogo from "../components/HexLogo";
+import { Button, PressableScale, Segmented, TextField, notify } from "../components/ui";
 import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+  appleSignInAvailable,
+  completeSignInFromUrl,
+  signInWithApple,
+  signInWithGoogle,
+} from "../lib/oauth";
 import { supabase } from "../lib/supabase";
+import { colors, font, radius } from "../lib/theme";
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
+  const url = Linking.useURL();
+  const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(null); // "email" | "apple" | "google"
   const [error, setError] = useState("");
+  const [appleOk, setAppleOk] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError("Please enter your email and password.");
+  useEffect(() => {
+    appleSignInAvailable().then(setAppleOk);
+  }, []);
+
+  // Coming back from Google sign-in in a browser (web)
+  useEffect(() => {
+    if (url && /access_token|code=/.test(url)) {
+      completeSignInFromUrl(url).catch((e) => setError(e.message));
+    }
+  }, [url]);
+
+  const submit = async () => {
+    if (!email.trim() || !password) {
+      setError("Enter your email and password.");
       return;
     }
-    setLoading(true);
+    setLoading("email");
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      if (
-        error.message.toLowerCase().includes("invalid") ||
-        error.message.toLowerCase().includes("credentials")
-      ) {
+    if (mode === "login") {
+      const { error: e } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (e) {
         setError(
-          "No account found with those details. Please check your info or create an account.",
+          /invalid|credentials/i.test(e.message)
+            ? "Wrong email or password. Check them or create an account."
+            : e.message,
         );
-      } else {
-        setError(error.message);
+      }
+    } else {
+      if (password.length < 6) {
+        setLoading(null);
+        setError("Use at least 6 characters for your password.");
+        return;
+      }
+      const { data, error: e } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: Linking.createURL("/login") },
+      });
+      if (e) setError(e.message);
+      else if (!data.session) {
+        notify("Check your email", `Tap the link we sent to ${email.trim()} to confirm your account, then log in.`);
+        setMode("login");
       }
     }
-    setLoading(false);
+    setLoading(null);
   };
 
-  const handleSignUp = async () => {
-    if (!email || !password) {
-      setError("Please enter your email and password to create an account.");
-      return;
-    }
-    setLoading(true);
+  const social = async (provider) => {
+    setLoading(provider);
     setError("");
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) setError(error.message);
-    setLoading(false);
+    try {
+      if (provider === "apple") await signInWithApple();
+      else await signInWithGoogle();
+    } catch (e) {
+      setError(e.message || "Sign-in didn't work. Try again.");
+    } finally {
+      setLoading(null);
+    }
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      setError("Please enter your email.");
+  const forgot = async () => {
+    if (!email.trim()) {
+      setError("Enter your email first, then tap Forgot password.");
       return;
     }
-    setLoading(true);
-    setError("");
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) {
-      setError(error.message);
-    } else {
-      setError("");
-      alert(`Password reset email sent to ${email}`);
-    }
-    setLoading(false);
+    // Without redirectTo, Supabase sends people to its default Site URL
+    const { error: e } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: Linking.createURL("/reset-password"),
+    });
+    if (e) setError(e.message);
+    else notify("Check your email", `We sent a password reset link to ${email.trim()}.`);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.logoRow}>
-        <Image
-          source={require("../assets/images/icon.png")}
-          style={{ width: 44, height: 44, borderRadius: 10 }}
-        />
-        <Text style={styles.logoLabel}>Settle</Text>
-      </View>
-
-      <Text style={styles.tagline}>Settle the bill simply.</Text>
-
-      <View style={styles.tagRow}>
-        <View style={styles.tag}>
-          <Text style={styles.tagText}>⚡ Split bills</Text>
-        </View>
-        <View style={styles.tagPink}>
-          <Text style={styles.tagTextPink}>💸 Track debts</Text>
-        </View>
-        <View style={styles.tag}>
-          <Text style={styles.tagText}>✓ Settle up</Text>
-        </View>
-      </View>
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <View style={styles.spacer} />
-
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="you@email.com"
-        placeholderTextColor="#8B8B8B"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="password"
-        placeholderTextColor="#8B8B8B"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-
-      <TouchableOpacity
-        style={styles.loginButton}
-        onPress={handleLogin}
-        disabled={loading}
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 40, paddingHorizontal: 24, paddingBottom: insets.bottom + 24, flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.loginButtonText}>
-          {loading ? "Loading..." : "Log In"}
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.forgotButton}
-        onPress={handleForgotPassword}
-      >
-        <Text style={styles.forgotButtonText}>Forgot Password?</Text>
-      </TouchableOpacity>
+        <Animated.View entering={FadeInUp.springify().damping(16)} style={styles.brand}>
+          <HexLogo size={64} />
+          <Text style={[font.hero, { color: colors.text, marginTop: 14 }]}>Settle</Text>
+          <Text style={[font.body, { color: colors.textSecondary, marginTop: 4 }]}>
+            Split costs with friends. Settle up in a tap.
+          </Text>
+        </Animated.View>
 
-      <TouchableOpacity
-        style={styles.signupButton}
-        onPress={handleSignUp}
-        disabled={loading}
-      >
-        <Text style={styles.signupButtonText}>
-          {loading ? "Loading..." : "Create Account"}
-        </Text>
-      </TouchableOpacity>
+        <Animated.View entering={FadeInDown.delay(120).springify().damping(18)}>
+          <View style={{ gap: 10, marginBottom: 22 }}>
+            {appleOk && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+                cornerRadius={radius.md}
+                style={{ height: 52 }}
+                onPress={() => social("apple")}
+              />
+            )}
+            <PressableScale onPress={() => social("google")} hapticOnPress="light" style={styles.google} accessibilityLabel="Continue with Google">
+              <Ionicons name="logo-google" size={18} color={colors.text} />
+              <Text style={[font.body, { color: colors.text, fontWeight: "700" }]}>
+                {loading === "google" ? "Opening Google…" : "Continue with Google"}
+              </Text>
+            </PressableScale>
+          </View>
 
-      <View style={styles.spacer} />
+          <View style={styles.orRow}>
+            <View style={styles.orLine} />
+            <Text style={[font.small, { color: colors.textMuted }]}>or use email</Text>
+            <View style={styles.orLine} />
+          </View>
+
+          <View style={{ marginBottom: 16 }}>
+            <Segmented
+              value={mode}
+              onChange={(m) => {
+                setMode(m);
+                setError("");
+              }}
+              options={[
+                { value: "login", label: "Log in" },
+                { value: "signup", label: "Create account" },
+              ]}
+            />
+          </View>
+
+          <TextField
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+          />
+          <TextField
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder={mode === "signup" ? "At least 6 characters" : "Your password"}
+            secureTextEntry
+            autoComplete={mode === "signup" ? "new-password" : "password"}
+            onSubmitEditing={submit}
+          />
+
+          {error ? (
+            <Animated.View entering={FadeIn} style={styles.error}>
+              <Ionicons name="alert-circle" size={18} color={colors.pink} />
+              <Text style={[font.small, { color: colors.pink, flex: 1 }]}>{error}</Text>
+            </Animated.View>
+          ) : null}
+
+          <Button
+            title={mode === "login" ? "Log in" : "Create account"}
+            loading={loading === "email"}
+            haptic="medium"
+            onPress={submit}
+          />
+          {mode === "login" && (
+            <PressableScale onPress={forgot} style={{ alignItems: "center", paddingVertical: 14 }}>
+              <Text style={[font.small, { color: colors.textSecondary, fontWeight: "600" }]}>Forgot password?</Text>
+            </PressableScale>
+          )}
+        </Animated.View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0A0A",
-    paddingHorizontal: 20,
-    paddingTop: 80,
+  brand: {
+    alignItems: "center",
+    marginBottom: 36,
   },
-  logoRow: {
+  google: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    height: 52,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  orRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 8,
+    marginBottom: 18,
   },
-  logoMark: {
-    width: 44,
-    height: 44,
-    backgroundColor: "#00F5D4",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
   },
-  logoText: { color: "#0A0A0A", fontSize: 28, fontWeight: "900" },
-  logoLabel: { color: "#FFFFFF", fontSize: 32, fontWeight: "700" },
-  tagline: { color: "#8B8B8B", fontSize: 16, marginBottom: 20 },
-  tagRow: { flexDirection: "row", gap: 8, marginBottom: 32, flexWrap: "wrap" },
-  tag: {
-    backgroundColor: "#0A2A24",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 0.5,
-    borderColor: "#00F5D4",
-  },
-  tagText: { color: "#00F5D4", fontSize: 12, fontWeight: "600" },
-  tagPink: {
-    backgroundColor: "#2A0A1A",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 0.5,
-    borderColor: "#F15BB5",
-  },
-  tagTextPink: { color: "#F15BB5", fontSize: 12, fontWeight: "600" },
-  spacer: { flex: 1 },
-  label: {
-    color: "#8B8B8B",
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: "#FFFFFF",
-    borderWidth: 0.5,
-    borderColor: "#262626",
-    marginBottom: 20,
-  },
-  loginButton: {
-    backgroundColor: "#00F5D4",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  loginButtonText: { color: "#0A0A0A", fontSize: 16, fontWeight: "700" },
-  signupButton: {
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#F15BB5",
-    marginBottom: 20,
-  },
-  signupButtonText: { color: "#F15BB5", fontSize: 16, fontWeight: "600" },
   error: {
-    color: "#F15BB5",
-    fontSize: 13,
-    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     padding: 12,
-    backgroundColor: "#2A0A1A",
-    borderRadius: 8,
-    borderWidth: 0.5,
-    borderColor: "#F15BB5",
+    marginBottom: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.pinkSoft,
+    borderWidth: 1,
+    borderColor: colors.pinkBorder,
   },
-  forgotButton: { alignItems: "center", paddingVertical: 10, marginBottom: 4 },
-  forgotButtonText: { color: "#8B8B8B", fontSize: 14 },
-  logoImage: { width: 36, height: 36, borderRadius: 8 },
 });

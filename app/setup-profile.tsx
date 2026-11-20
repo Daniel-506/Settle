@@ -1,198 +1,137 @@
-import { router } from "expo-router";
-import { useState } from "react";
-import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from "react-native";
+import Animated, { FadeIn, FadeInDown, ZoomIn } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Avatar, Button, TextField } from "../components/ui";
+import { SUGGESTED_NAME_KEY } from "../lib/oauth";
 import { supabase } from "../lib/supabase";
+import { colors, font, radius } from "../lib/theme";
+import useStore from "../store/useStore";
 
 export default function SetupProfileScreen() {
-  const [username, setUsername] = useState("");
+  const insets = useSafeAreaInsets();
+  const userId = useStore((s) => s.userId);
+  const setHasProfile = useStore((s) => s.setHasProfile);
+  const refreshProfile = useStore((s) => s.refreshProfile);
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSave = async () => {
-    if (!username || !displayName) return;
+  // Prefill the name from Apple/Google sign-in when we have it
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const meta = data.user?.user_metadata || {};
+      const suggested =
+        (await AsyncStorage.getItem(SUGGESTED_NAME_KEY)) || meta.full_name || meta.name || "";
+      if (suggested) {
+        setDisplayName((v) => v || suggested);
+        setUsername(
+          (v) => v || suggested.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16),
+        );
+      }
+    })();
+  }, []);
+
+  const save = async () => {
+    if (!displayName.trim() || !username) {
+      setError("Add a name and a username.");
+      return;
+    }
     setLoading(true);
     setError("");
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
 
     const { data: existing } = await supabase
       .from("profiles")
-      .select("username")
-      .eq("username", username.toLowerCase())
-      .single();
-
+      .select("id")
+      .eq("username", username)
+      .maybeSingle();
     if (existing) {
-      setError("Username already taken. Try another one.");
       setLoading(false);
+      setError("That username is taken. Try another one.");
       return;
     }
 
-    const { error } = await supabase.from("profiles").insert({
+    const meta = user.user_metadata || {};
+    const { error: e } = await supabase.from("profiles").insert({
       id: user.id,
-      username: username.toLowerCase(),
-      display_name: displayName,
+      username,
+      display_name: displayName.trim(),
       email: user.email,
+      avatar_url: meta.avatar_url || meta.picture || null,
     });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      router.replace("/");
-    }
-
     setLoading(false);
+    if (e) {
+      setError(e.code === "23505" ? "That username is taken. Try another one." : e.message);
+      return;
+    }
+    await AsyncStorage.removeItem(SUGGESTED_NAME_KEY);
+    await refreshProfile();
+    // The root layout sees this and takes you to the home screen
+    setHasProfile(true);
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <View style={styles.logoRow}>
-        <Image
-          source={require("../assets/images/icon.png")}
-          style={{ width: 44, height: 44, borderRadius: 10 }}
-        />
-        <Text style={styles.logoLabel}>Settle</Text>
-      </View>
-
-      <Text style={styles.title}>Set up your profile</Text>
-      <Text style={styles.subtitle}>
-        This is how friends will find you on Settle
-      </Text>
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <Text style={styles.label}>Display name</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g. Danny"
-        placeholderTextColor="#8B8B8B"
-        value={displayName}
-        onChangeText={setDisplayName}
-        autoFocus
-      />
-
-      <Text style={styles.label}>Username</Text>
-      <View style={styles.usernameRow}>
-        <Text style={styles.at}>@</Text>
-        <TextInput
-          style={styles.usernameInput}
-          placeholder="yourname"
-          placeholderTextColor="#8B8B8B"
-          value={username}
-          onChangeText={(text) => setUsername(text.replace(/[^a-z0-9_]/g, ""))}
-          autoCapitalize="none"
-        />
-      </View>
-      <Text style={styles.hint}>
-        Only lowercase letters, numbers, and underscores
-      </Text>
-
-      <View style={styles.spacer} />
-
-      <TouchableOpacity
-        style={[
-          styles.saveButton,
-          (!username || !displayName) && styles.saveButtonDisabled,
-        ]}
-        onPress={handleSave}
-        disabled={loading || !username || !displayName}
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 50, paddingHorizontal: 24, paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.saveButtonText}>
-          {loading ? "Saving..." : "Continue →"}
-        </Text>
-      </TouchableOpacity>
+        <Animated.View entering={ZoomIn.springify().damping(14)} style={{ alignItems: "center", marginBottom: 18 }}>
+          <Avatar id={userId} name={displayName || "?"} size={88} ring={colors.mint} />
+        </Animated.View>
+        <Animated.Text entering={FadeIn.delay(100)} style={[font.title, { color: colors.text, textAlign: "center" }]}>
+          Set up your profile
+        </Animated.Text>
+        <Animated.Text
+          entering={FadeIn.delay(150)}
+          style={[font.body, { color: colors.textSecondary, textAlign: "center", marginTop: 6, marginBottom: 28 }]}
+        >
+          This is how friends find you on Settle.
+        </Animated.Text>
+
+        <Animated.View entering={FadeInDown.delay(200).springify().damping(18)}>
+          <TextField label="Your name" value={displayName} onChangeText={setDisplayName} placeholder="Danny" autoFocus />
+          <TextField
+            label="Username"
+            value={username}
+            onChangeText={(t) => setUsername(t.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+            placeholder="yourname"
+            autoCapitalize="none"
+            autoCorrect={false}
+            prefix="@"
+          />
+          <Text style={[font.small, { color: colors.textMuted, marginTop: -8, marginBottom: 20 }]}>
+            Lowercase letters, numbers and underscores
+          </Text>
+          {error ? (
+            <Animated.View entering={FadeIn} style={styles.error}>
+              <Ionicons name="alert-circle" size={18} color={colors.pink} />
+              <Text style={[font.small, { color: colors.pink, flex: 1 }]}>{error}</Text>
+            </Animated.View>
+          ) : null}
+          <Button title="Continue" icon="arrow-forward" loading={loading} haptic="success" onPress={save} />
+        </Animated.View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0A0A0A",
-    paddingHorizontal: 20,
-    paddingTop: 80,
-  },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 32,
-  },
-  logoMark: {
-    width: 44,
-    height: 44,
-    backgroundColor: "#00F5D4",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: { color: "#0A0A0A", fontSize: 28, fontWeight: "900" },
-  logoLabel: { color: "#FFFFFF", fontSize: 28, fontWeight: "700" },
-  title: { color: "#FFFFFF", fontSize: 26, fontWeight: "700", marginBottom: 8 },
-  subtitle: { color: "#8B8B8B", fontSize: 15, marginBottom: 40 },
-  label: {
-    color: "#8B8B8B",
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: "#FFFFFF",
-    borderWidth: 0.5,
-    borderColor: "#262626",
-    marginBottom: 24,
-  },
-  usernameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#161616",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#F15BB5",
-    marginBottom: 8,
-    paddingLeft: 16,
-  },
-  at: { color: "#F15BB5", fontSize: 16, fontWeight: "600" },
-  usernameInput: { flex: 1, padding: 16, fontSize: 16, color: "#FFFFFF" },
-  hint: { color: "#8B8B8B", fontSize: 12, marginBottom: 32 },
-  spacer: { flex: 1 },
-  saveButton: {
-    backgroundColor: "#00F5D4",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 40,
-  },
-  saveButtonDisabled: { opacity: 0.4 },
-  saveButtonText: { color: "#0A0A0A", fontSize: 16, fontWeight: "700" },
   error: {
-    color: "#F15BB5",
-    fontSize: 13,
-    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     padding: 12,
-    backgroundColor: "#2A0A1A",
-    borderRadius: 8,
-    borderWidth: 0.5,
-    borderColor: "#F15BB5",
+    marginBottom: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.pinkSoft,
+    borderWidth: 1,
+    borderColor: colors.pinkBorder,
   },
-  logoImage: { width: 36, height: 36, borderRadius: 8 },
 });
