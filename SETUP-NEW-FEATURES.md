@@ -1,7 +1,7 @@
 # Settle 1.1: setup checklist
 
-The app code for friends, the redesign, activity, invites, receipts, push
-notifications and Apple/Google sign-in is all in the repo. These are the
+The app code for friends, the redesign, activity, invites, receipts and push
+notifications is all in the repo. These are the
 one-time steps outside the code. Do them in order.
 
 ## 1. Install the new packages
@@ -31,31 +31,9 @@ exp://**
 http://localhost:8081/**
 ```
 
-These let password reset, email confirmation and Google sign-in links come
-back into the app.
+These let password reset and email confirmation links come back into the app.
 
-## 4. Google sign-in
-
-1. Google Cloud Console → APIs & Services → Credentials → **Create credentials
-   → OAuth client ID → Web application**.
-2. Under **Authorized redirect URIs**, add
-   `https://<your-project-ref>.supabase.co/auth/v1/callback`
-   (your project ref is in your Supabase URL).
-3. Copy the **Client ID** and **Client secret**.
-4. Supabase → Authentication → Providers → **Google** → turn on, paste both and save.
-
-## 5. Sign in with Apple (iPhone)
-
-1. Supabase → Authentication → Providers → **Apple** → turn on.
-2. In **Client IDs**, enter `com.danielbuilds.settle`, then save.
-   (The iPhone app signs in natively, so the secret key fields can stay empty.)
-3. The next EAS build turns on the "Sign in with Apple" capability for the
-   app automatically (`usesAppleSignIn` is set in `app.json`).
-
-Apple requires Sign in with Apple whenever an app offers Google sign-in, so
-keep both.
-
-## 6. Push notifications
+## 4. Push notifications
 
 **a) Deploy the function.** Use either:
 
@@ -76,10 +54,9 @@ to set up a push notifications key.
 Push only works on a real phone running a build (TestFlight or the App
 Store), not in the browser.
 
-## 7. Build and ship
+## 5. Build and ship
 
-The new features add native modules (notifications, Apple sign-in), so you
-need a new build. An over-the-air update isn't enough.
+Push notifications add a native module, so you need a new build. An over-the-air update isn't enough.
 
 ```
 eas build -p ios --profile production
@@ -90,6 +67,6 @@ The version is set to 1.1.0 in `app.json`.
 
 ## Testing before you build
 
-- `npx expo start --offline`, then press `w`: everything except push and
-  Apple sign-in works in the browser. Pop-ups now work on web too.
-- Expo Go on your phone: everything except push and Apple sign-in.
+- `npx expo start --offline`, then press `w`: everything except push works
+  in the browser. Pop-ups now work on web too.
+- Expo Go on your phone: everything except push.

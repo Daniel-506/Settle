@@ -16,8 +16,7 @@
         "NSPhotoLibraryUsageDescription": "Settle uses your photos to set a profile picture or attach a receipt.",
         "NSCameraUsageDescription": "Settle uses your camera to take a profile picture or a photo of a receipt.",
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "usesAppleSignIn": true
+      }
     },
     "android": {
       "package": "com.danielbuilds.settle",
@@ -52,7 +51,6 @@
         }
       ],
       "expo-font",
-      "expo-apple-authentication",
       [
         "expo-notifications",
         {

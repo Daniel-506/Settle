@@ -21,7 +21,6 @@
     "@supabase/supabase-js": "^2.39.3",
     "browserify-zlib": "^0.2.0",
     "expo": "~54.0.37",
-    "expo-apple-authentication": "~8.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.14",
     "expo-device": "~8.0.10",

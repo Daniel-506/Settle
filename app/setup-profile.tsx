@@ -1,11 +1,9 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from "react-native";
 import Animated, { FadeIn, FadeInDown, ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, Button, TextField } from "../components/ui";
-import { SUGGESTED_NAME_KEY } from "../lib/oauth";
 import { supabase } from "../lib/supabase";
 import { colors, font, radius } from "../lib/theme";
 import useStore from "../store/useStore";
@@ -20,21 +18,6 @@ export default function SetupProfileScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Prefill the name from Apple/Google sign-in when we have it
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      const meta = data.user?.user_metadata || {};
-      const suggested =
-        (await AsyncStorage.getItem(SUGGESTED_NAME_KEY)) || meta.full_name || meta.name || "";
-      if (suggested) {
-        setDisplayName((v) => v || suggested);
-        setUsername(
-          (v) => v || suggested.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 16),
-        );
-      }
-    })();
-  }, []);
 
   const save = async () => {
     if (!displayName.trim() || !username) {
@@ -57,20 +40,17 @@ export default function SetupProfileScreen() {
       return;
     }
 
-    const meta = user.user_metadata || {};
     const { error: e } = await supabase.from("profiles").insert({
       id: user.id,
       username,
       display_name: displayName.trim(),
       email: user.email,
-      avatar_url: meta.avatar_url || meta.picture || null,
     });
     setLoading(false);
     if (e) {
       setError(e.code === "23505" ? "That username is taken. Try another one." : e.message);
       return;
     }
-    await AsyncStorage.removeItem(SUGGESTED_NAME_KEY);
     await refreshProfile();
     // The root layout sees this and takes you to the home screen
     setHasProfile(true);

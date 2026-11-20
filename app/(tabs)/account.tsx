@@ -19,7 +19,6 @@ import {
   toast,
 } from "../../components/ui";
 import { notificationStatus, registerForPush, setPushDisabled, unregisterPush } from "../../lib/notifications";
-import { signInMethod } from "../../lib/oauth";
 import { supabase } from "../../lib/supabase";
 import { colors, font } from "../../lib/theme";
 import useStore from "../../store/useStore";
@@ -36,7 +35,6 @@ export default function AccountScreen() {
   const userId = useStore((s) => s.userId);
   const profile = useStore((s) => s.profile);
   const refreshProfile = useStore((s) => s.refreshProfile);
-  const [method, setMethod] = useState("email");
   const [editing, setEditing] = useState(null);
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -50,7 +48,6 @@ export default function AccountScreen() {
     useCallback(() => {
       refreshProfile();
       notificationStatus().then(setPush);
-      supabase.auth.getUser().then(({ data }) => setMethod(signInMethod(data.user)));
     }, [refreshProfile]),
   );
 
@@ -171,16 +168,13 @@ export default function AccountScreen() {
     setDeleting(true);
     const { data } = await supabase.auth.getUser();
     const user = data.user;
-    if (method === "email") {
-      const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: deleteInput });
-      if (error) {
-        setDeleting(false);
-        toast("Incorrect password", "error");
-        return;
-      }
-    } else if (deleteInput.trim().toUpperCase() !== "DELETE") {
+    const { error: pwError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: deleteInput,
+    });
+    if (pwError) {
       setDeleting(false);
-      toast('Type DELETE to confirm', "error");
+      toast("Incorrect password", "error");
       return;
     }
     await unregisterPush();
@@ -222,7 +216,7 @@ export default function AccountScreen() {
           {Object.keys(FIELDS).map((field, i, all) => (
             <Animated.View key={field} entering={FadeInDown.delay(i * 40)}>
               <PressableScale
-                onPress={() => (field === "email" && method !== "email" ? null : startEdit(field))}
+                onPress={() => startEdit(field)}
                 scaleTo={0.98}
                 style={[styles.row, i < all.length - 1 && styles.rowBorder]}
               >
@@ -232,9 +226,7 @@ export default function AccountScreen() {
                     {profile?.[field] ? (field === "username" ? `@${profile[field]}` : profile[field]) : "Not set"}
                   </Text>
                 </View>
-                {!(field === "email" && method !== "email") && (
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                )}
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </PressableScale>
             </Animated.View>
           ))}
@@ -262,9 +254,7 @@ export default function AccountScreen() {
         </Card>
 
         <View style={{ gap: 10, marginTop: 24 }}>
-          {method === "email" && (
-            <Button title="Change password" icon="key-outline" variant="secondary" onPress={changePassword} />
-          )}
+          <Button title="Change password" icon="key-outline" variant="secondary" onPress={changePassword} />
           <Button title="Log out" icon="log-out-outline" variant="secondary" onPress={logOut} />
           <Button
             title="Delete account"
@@ -302,12 +292,12 @@ export default function AccountScreen() {
           still have people in them are handed to another member. This can&apos;t be undone.
         </Text>
         <TextField
-          label={method === "email" ? "Password" : 'Type "DELETE" to confirm'}
+          label="Password"
           value={deleteInput}
           onChangeText={setDeleteInput}
-          secureTextEntry={method === "email"}
-          autoCapitalize={method === "email" ? "none" : "characters"}
-          placeholder={method === "email" ? "Your password" : "DELETE"}
+          secureTextEntry
+          autoCapitalize="none"
+          placeholder="Your password"
         />
         <Button title="Delete my account" variant="danger" haptic="warning" loading={deleting} onPress={deleteAccount} />
       </Sheet>
