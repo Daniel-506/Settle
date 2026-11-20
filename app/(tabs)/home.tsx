@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Avatar,
@@ -22,6 +22,7 @@ import { loadOverview } from "../../lib/overview";
 import { supabase } from "../../lib/supabase";
 import { colorForId, colors, font, money, radius } from "../../lib/theme";
 import useStore from "../../store/useStore";
+import { enter, layoutShift } from "../../lib/motion";
 
 function greeting() {
   const h = new Date().getHours();
@@ -105,7 +106,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Overall balance */}
-        <Animated.View entering={FadeInDown.springify().damping(18)}>
+        <Animated.View entering={enter}>
           <Card style={styles.balanceCard}>
             <Text style={[font.label, { color: colors.textSecondary }]}>Overall</Text>
             {data ? (
@@ -144,7 +145,7 @@ export default function HomeScreen() {
 
         {/* Friend requests */}
         {friendRequests > 0 && (
-          <Animated.View entering={FadeInDown.delay(80).springify()}>
+          <Animated.View entering={enter}>
             <Card onPress={() => router.navigate("/friends")} style={styles.requestBanner}>
               <IconTile icon="people" colorKey="purple" size={36} />
               <Text style={[font.body, { color: colors.text, flex: 1, fontWeight: "600" }]}>
@@ -219,8 +220,8 @@ function EventCard({ event, index, past, onLongPress }: any) {
   const colorKey = event.color || colorForId(String(event.id)).key;
   return (
     <Animated.View
-      entering={FadeInDown.delay(Math.min(index, 6) * 50).springify().damping(18)}
-      layout={LinearTransition.springify()}
+      entering={enter}
+      layout={layoutShift}
       style={{ marginBottom: 10, opacity: past ? 0.6 : 1 }}
     >
       <Card

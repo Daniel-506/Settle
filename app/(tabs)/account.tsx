@@ -4,7 +4,7 @@ import * as Linking from "expo-linking";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
-import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Avatar,
@@ -22,6 +22,7 @@ import { notificationStatus, registerForPush, setPushDisabled, unregisterPush } 
 import { supabase } from "../../lib/supabase";
 import { colors, font } from "../../lib/theme";
 import useStore from "../../store/useStore";
+import { enter } from "../../lib/motion";
 
 const FIELDS = {
   display_name: { label: "Display name", placeholder: "Danny" },
@@ -200,8 +201,8 @@ export default function AccountScreen() {
       >
         <Text style={[font.title, { color: colors.text }]}>Profile</Text>
 
-        <Animated.View entering={ZoomIn.springify().damping(15)} style={styles.hero}>
-          <PressableScale onPress={pickAvatar} scaleTo={0.94} accessibilityLabel="Change profile photo">
+        <Animated.View entering={enter} style={styles.hero}>
+          <PressableScale onPress={pickAvatar} accessibilityLabel="Change profile photo">
             <Avatar id={userId} name={profile?.display_name} uri={profile?.avatar_url} size={96} ring={colors.mint} />
             <View style={styles.cameraBadge}>
               <Ionicons name={uploading ? "hourglass-outline" : "camera"} size={15} color={colors.onMint} />
@@ -214,10 +215,9 @@ export default function AccountScreen() {
         <SectionLabel>Account</SectionLabel>
         <Card style={{ paddingVertical: 2 }}>
           {Object.keys(FIELDS).map((field, i, all) => (
-            <Animated.View key={field} entering={FadeInDown.delay(i * 40)}>
+            <Animated.View key={field} entering={enter}>
               <PressableScale
                 onPress={() => startEdit(field)}
-                scaleTo={0.98}
                 style={[styles.row, i < all.length - 1 && styles.rowBorder]}
               >
                 <View style={{ flex: 1 }}>

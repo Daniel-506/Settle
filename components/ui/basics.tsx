@@ -9,15 +9,9 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import { initials } from "../../lib/format";
+import { EASE, enter } from "../../lib/motion";
 import { colorForId, colors, font, noOutline, paletteFor, radius } from "../../lib/theme";
 import PressableScale from "./PressableScale";
 
@@ -367,7 +361,7 @@ export function Segmented({ options, value, onChange }: any) {
   const x = useSharedValue(0);
 
   useEffect(() => {
-    x.set(withSpring(index * segment, { damping: 18, stiffness: 220 }));
+    x.set(withTiming(index * segment, { duration: 200, easing: EASE }));
   }, [index, segment, x]);
 
   const pill = useAnimatedStyle(() => ({
@@ -387,7 +381,6 @@ export function Segmented({ options, value, onChange }: any) {
           key={o.value}
           onPress={() => onChange(o.value)}
           hapticOnPress="select"
-          scaleTo={0.98}
           style={styles.segment}
         >
           <Text
@@ -408,7 +401,7 @@ export function Segmented({ options, value, onChange }: any) {
 // ---------- Empty state ----------
 export function EmptyState({ icon = "sparkles", colorKey = "mint", title, body, action }: any) {
   return (
-    <Animated.View entering={FadeIn.duration(350)} style={styles.empty}>
+    <Animated.View entering={enter} style={styles.empty}>
       <IconTile icon={icon} colorKey={colorKey} size={56} />
       <Text style={[font.h3, { color: colors.text, marginTop: 14 }]}>{title}</Text>
       {body ? (

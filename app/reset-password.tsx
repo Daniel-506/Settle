@@ -3,12 +3,13 @@ import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from "react-native";
-import Animated, { FadeIn, ZoomIn } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, IconTile, TextField } from "../components/ui";
 import { linkParams } from "../lib/links";
 import { supabase } from "../lib/supabase";
 import { colors, font, radius } from "../lib/theme";
+import { enter } from "../lib/motion";
 
 const EXPIRED = "This reset link is invalid or has expired. Request a new one from the login screen.";
 
@@ -77,7 +78,7 @@ export default function ResetPasswordScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView contentContainerStyle={{ paddingTop: insets.top + 60, paddingHorizontal: 24, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-        <Animated.View entering={ZoomIn.springify().damping(14)} style={{ alignItems: "center", marginBottom: 18 }}>
+        <Animated.View entering={enter} style={{ alignItems: "center", marginBottom: 18 }}>
           <IconTile icon={done ? "checkmark-circle" : "key"} colorKey="mint" size={64} />
         </Animated.View>
         <Text style={[font.title, { color: colors.text, textAlign: "center", marginBottom: 8 }]}>
@@ -85,7 +86,7 @@ export default function ResetPasswordScreen() {
         </Text>
 
         {error ? (
-          <Animated.View entering={FadeIn} style={styles.error}>
+          <Animated.View entering={enter} style={styles.error}>
             <Ionicons name="alert-circle" size={18} color={colors.pink} />
             <Text style={[font.small, { color: colors.pink, flex: 1 }]}>{error}</Text>
           </Animated.View>
@@ -94,7 +95,7 @@ export default function ResetPasswordScreen() {
         {done ? (
           <Button title="Continue" icon="arrow-forward" style={{ marginTop: 20 }} onPress={() => router.replace("/home")} />
         ) : ready ? (
-          <Animated.View entering={FadeIn}>
+          <Animated.View entering={enter}>
             <Text style={[font.body, { color: colors.textSecondary, textAlign: "center", marginBottom: 24 }]}>
               Choose a new password.
             </Text>

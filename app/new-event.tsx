@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition, ZoomIn } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconAndColorPicker } from "../components/EventActions";
 import PeoplePicker from "../components/PeoplePicker";
@@ -10,6 +10,7 @@ import { Avatar, Button, Header, IconTile, PressableScale, SectionLabel, toast }
 import { supabase } from "../lib/supabase";
 import { EVENT_ICONS, colors, font, noOutline, palette, radius } from "../lib/theme";
 import useStore from "../store/useStore";
+import { enter, exit, layoutShift } from "../lib/motion";
 
 export default function NewEventScreen() {
   const insets = useSafeAreaInsets();
@@ -86,7 +87,7 @@ export default function NewEventScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 30 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.preview}>
+        <Animated.View entering={enter} style={styles.preview}>
           <IconTile icon={icon} colorKey={color} size={72} />
         </Animated.View>
         <TextInput
@@ -106,13 +107,13 @@ export default function NewEventScreen() {
         <IconAndColorPicker icon={icon} color={color} onIcon={setIcon} onColor={setColor} />
 
         <SectionLabel>Who&apos;s in?</SectionLabel>
-        <Animated.View layout={LinearTransition.springify()} style={styles.selected}>
+        <Animated.View layout={layoutShift} style={styles.selected}>
           <View style={styles.personChip}>
             <Avatar id={userId} name={profile?.display_name} uri={profile?.avatar_url} size={26} />
             <Text style={[font.small, { color: colors.text, fontWeight: "700" }]}>You</Text>
           </View>
           {people.map((p) => (
-            <Animated.View key={p.id} entering={ZoomIn.springify().damping(15)} exiting={FadeOut.duration(150)} layout={LinearTransition.springify()}>
+            <Animated.View key={p.id} entering={enter} exiting={exit} layout={layoutShift}>
               <PressableScale onPress={() => togglePerson(p)} style={[styles.personChip, styles.personChipOn]} accessibilityLabel={`Remove ${p.display_name}`}>
                 <Avatar id={p.id} name={p.display_name} uri={p.avatar_url} size={26} />
                 <Text style={[font.small, { color: colors.text, fontWeight: "700" }]}>{p.display_name}</Text>
@@ -128,13 +129,13 @@ export default function NewEventScreen() {
         </Text>
 
         {error ? (
-          <Animated.Text entering={FadeInDown} style={[font.small, { color: colors.pink, marginTop: 16 }]}>
+          <Animated.Text entering={enter} style={[font.small, { color: colors.pink, marginTop: 16 }]}>
             {error}
           </Animated.Text>
         ) : null}
       </ScrollView>
 
-      <Animated.View entering={FadeIn} style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+      <Animated.View entering={enter} style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <Button
           title={people.length ? `Create with ${people.length + 1} people` : "Create event"}
           haptic="medium"

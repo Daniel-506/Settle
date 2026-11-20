@@ -9,19 +9,14 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  FadeInUp,
-  FadeOutUp,
-  LinearTransition,
-  SlideInDown,
-  ZoomIn,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { create } from "zustand";
 import { fromDateKey, monthLabel, toDateKey, todayKey } from "../../lib/format";
 import { colors, font, radius } from "../../lib/theme";
 import { Button, IconButton } from "./basics";
 import PressableScale, { haptic } from "./PressableScale";
+import { enter, exit, layoutShift, sheetIn } from "../../lib/motion";
 
 // =====================================================================
 // Toasts: toast("Expense added") from anywhere
@@ -48,9 +43,9 @@ export function ToastHost() {
       {items.map((t) => (
         <Animated.View
           key={t.id}
-          entering={FadeInUp.springify().damping(16)}
-          exiting={FadeOutUp.duration(200)}
-          layout={LinearTransition.springify()}
+          entering={enter}
+          exiting={exit}
+          layout={layoutShift}
           style={styles.toast}
         >
           <Ionicons
@@ -121,7 +116,7 @@ export function ConfirmHost() {
     >
       <Pressable style={styles.dialogBackdrop} onPress={() => close(false)}>
         {request && (
-          <Animated.View entering={ZoomIn.springify().damping(16)}>
+          <Animated.View entering={enter}>
             <Pressable style={styles.dialog}>
               <Text style={[font.h2, { color: colors.text, marginBottom: 8 }]}>
                 {request.title}
@@ -169,7 +164,7 @@ export function Sheet({ visible, onClose, title, children, scroll }: any) {
       >
         <Pressable style={styles.sheetBackdrop} onPress={onClose} />
         <Animated.View
-          entering={SlideInDown.springify().damping(20).stiffness(180)}
+          entering={sheetIn}
           style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}
         >
           <View style={styles.sheetHandle} />

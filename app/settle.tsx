@@ -3,7 +3,7 @@ import { setStringAsync } from "expo-clipboard";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Avatar,
@@ -25,6 +25,7 @@ import { calculateSplit } from "../lib/splitCalculator";
 import { supabase } from "../lib/supabase";
 import { colors, font, money, radius } from "../lib/theme";
 import useStore from "../store/useStore";
+import { enter, exit, layoutShift } from "../lib/motion";
 
 export default function SettleScreen() {
   const { event_id } = useLocalSearchParams();
@@ -164,9 +165,9 @@ export default function SettleScreen() {
     return (
       <Animated.View
         key={`${t.fromId}-${t.toId}`}
-        entering={FadeInDown.delay(i * 50).springify().damping(18)}
-        exiting={FadeOut.duration(200)}
-        layout={LinearTransition.springify()}
+        entering={enter}
+        exiting={exit}
+        layout={layoutShift}
       >
         <Card tone={isMyDebt ? "pink" : toMe ? "mint" : undefined} style={styles.transfer}>
           <View style={styles.people}>
@@ -211,8 +212,8 @@ export default function SettleScreen() {
   const settledRow = (p, i, list) => (
     <Animated.View
       key={String(p.id)}
-      entering={FadeInDown.delay(i * 30)}
-      layout={LinearTransition.springify()}
+      entering={enter}
+      layout={layoutShift}
       style={[styles.settledRow, i < list.length - 1 && styles.rowBorder]}
     >
       <View style={styles.tick}>
@@ -237,7 +238,7 @@ export default function SettleScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 6 }}>
       <Header title="Settle up" subtitle={eventName} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeInDown.springify().damping(18)}>
+        <Animated.View entering={enter}>
           <Card style={styles.summary}>
             <View style={{ flex: 1 }}>
               <Text style={[font.label, { color: colors.textSecondary }]}>

@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   customSplitFields,
@@ -42,6 +42,7 @@ import {
   confirm,
   toast,
 } from "./ui";
+import { enter, layoutShift } from "../lib/motion";
 
 // Digits and one decimal point, max 2 decimals (blocks things like "1.2.3")
 const cleanAmount = (text) => {
@@ -253,7 +254,7 @@ export default function ExpenseForm({ mode, eventId: eventIdProp, expenseId }: a
         showsVerticalScrollIndicator={false}
       >
         {/* Amount */}
-        <Animated.View entering={FadeIn.duration(250)} style={styles.amountWrap}>
+        <Animated.View entering={enter} style={styles.amountWrap}>
           <IconTile icon={cat.icon} colorKey={cat.color} size={48} />
           <View style={styles.amountRow}>
             <Text style={[styles.amountText, { color: total ? colors.text : colors.textMuted }]}>$</Text>
@@ -357,8 +358,8 @@ export default function ExpenseForm({ mode, eventId: eventIdProp, expenseId }: a
             const on = selectedIds.includes(m.id);
             const isCustom = Number(customSplits[m.id]) > 0;
             return (
-              <Animated.View key={m.id} layout={LinearTransition.springify()} style={[i < members.length - 1 && styles.rowBorder]}>
-                <PressableScale onPress={() => toggle(m.id)} hapticOnPress="select" scaleTo={0.98} style={styles.splitRow}>
+              <Animated.View key={m.id} layout={layoutShift} style={[i < members.length - 1 && styles.rowBorder]}>
+                <PressableScale onPress={() => toggle(m.id)} hapticOnPress="select" style={styles.splitRow}>
                   <View style={[styles.check, on && styles.checkOn]}>
                     {on && <Ionicons name="checkmark" size={15} color={colors.onMint} />}
                   </View>
@@ -373,7 +374,7 @@ export default function ExpenseForm({ mode, eventId: eventIdProp, expenseId }: a
                   )}
                 </PressableScale>
                 {on && showCustom && (
-                  <Animated.View entering={FadeInDown.duration(200)} style={styles.customRow}>
+                  <Animated.View entering={enter} style={styles.customRow}>
                     <Text style={[font.small, { color: colors.textSecondary, flex: 1 }]}>Custom amount</Text>
                     <View style={styles.customInputWrap}>
                       <Text style={{ color: colors.textMuted, fontWeight: "700" }}>$</Text>
@@ -419,7 +420,7 @@ export default function ExpenseForm({ mode, eventId: eventIdProp, expenseId }: a
         {/* Receipt */}
         <SectionLabel>Receipt</SectionLabel>
         {receiptPreview && !removeReceipt ? (
-          <Animated.View entering={FadeIn} style={styles.receiptRow}>
+          <Animated.View entering={enter} style={styles.receiptRow}>
             <PressableScale onPress={() => setReceiptOpen(true)} accessibilityLabel="View receipt">
               <Image source={{ uri: receiptPreview }} style={styles.receiptThumb} contentFit="cover" transition={200} />
             </PressableScale>
@@ -448,7 +449,7 @@ export default function ExpenseForm({ mode, eventId: eventIdProp, expenseId }: a
         )}
 
         {error ? (
-          <Animated.View entering={FadeInDown} style={styles.error}>
+          <Animated.View entering={enter} style={styles.error}>
             <Ionicons name="alert-circle" size={18} color={colors.pink} />
             <Text style={[font.small, { color: colors.pink, flex: 1 }]}>{error}</Text>
           </Animated.View>

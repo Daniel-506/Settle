@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from "react-native";
-import Animated, { FadeIn, FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, Button, TextField } from "../components/ui";
 import { supabase } from "../lib/supabase";
 import { colors, font, radius } from "../lib/theme";
 import useStore from "../store/useStore";
+import { enter } from "../lib/motion";
 
 export default function SetupProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -62,20 +63,20 @@ export default function SetupProfileScreen() {
         contentContainerStyle={{ paddingTop: insets.top + 50, paddingHorizontal: 24, paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
       >
-        <Animated.View entering={ZoomIn.springify().damping(14)} style={{ alignItems: "center", marginBottom: 18 }}>
+        <Animated.View entering={enter} style={{ alignItems: "center", marginBottom: 18 }}>
           <Avatar id={userId} name={displayName || "?"} size={88} ring={colors.mint} />
         </Animated.View>
-        <Animated.Text entering={FadeIn.delay(100)} style={[font.title, { color: colors.text, textAlign: "center" }]}>
+        <Animated.Text entering={enter} style={[font.title, { color: colors.text, textAlign: "center" }]}>
           Set up your profile
         </Animated.Text>
         <Animated.Text
-          entering={FadeIn.delay(150)}
+          entering={enter}
           style={[font.body, { color: colors.textSecondary, textAlign: "center", marginTop: 6, marginBottom: 28 }]}
         >
           This is how friends find you on Settle.
         </Animated.Text>
 
-        <Animated.View entering={FadeInDown.delay(200).springify().damping(18)}>
+        <Animated.View entering={enter}>
           <TextField label="Your name" value={displayName} onChangeText={setDisplayName} placeholder="Danny" autoFocus />
           <TextField
             label="Username"
@@ -90,7 +91,7 @@ export default function SetupProfileScreen() {
             Lowercase letters, numbers and underscores
           </Text>
           {error ? (
-            <Animated.View entering={FadeIn} style={styles.error}>
+            <Animated.View entering={enter} style={styles.error}>
               <Ionicons name="alert-circle" size={18} color={colors.pink} />
               <Text style={[font.small, { color: colors.pink, flex: 1 }]}>{error}</Text>
             </Animated.View>

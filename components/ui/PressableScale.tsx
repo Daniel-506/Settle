@@ -3,8 +3,9 @@ import { Platform, Pressable } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
+import { EASE, PRESS } from "../../lib/motion";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -25,12 +26,12 @@ export function haptic(kind = "light") {
     ).catch(done);
 }
 
-// A Pressable that springs down slightly while you press it.
+// A Pressable that dips very slightly while you press it.
 export default function PressableScale({
   children,
   style,
   onPress,
-  scaleTo = 0.97,
+  scaleTo = PRESS.scale,
   hapticOnPress,
   disabled,
   ...rest
@@ -45,10 +46,10 @@ export default function PressableScale({
       {...rest}
       disabled={disabled}
       onPressIn={() => {
-        scale.set(withSpring(scaleTo, { damping: 20, stiffness: 400 }));
+        scale.set(withTiming(scaleTo, { duration: PRESS.inMs, easing: EASE }));
       }}
       onPressOut={() => {
-        scale.set(withSpring(1, { damping: 14, stiffness: 260 }));
+        scale.set(withTiming(1, { duration: PRESS.outMs, easing: EASE }));
       }}
       onPress={(e) => {
         if (hapticOnPress) haptic(hapticOnPress);

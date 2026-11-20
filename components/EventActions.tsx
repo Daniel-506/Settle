@@ -140,7 +140,6 @@ export function IconAndColorPicker({ icon, color, onIcon, onColor }: any) {
             key={name}
             onPress={() => onIcon(name)}
             hapticOnPress="select"
-            scaleTo={0.9}
             style={[styles.iconChoice, icon === name && { borderColor: colors.mint }]}
             accessibilityLabel={name}
           >
@@ -155,7 +154,6 @@ export function IconAndColorPicker({ icon, color, onIcon, onColor }: any) {
             key={p.key}
             onPress={() => onColor(p.key)}
             hapticOnPress="select"
-            scaleTo={0.88}
             accessibilityLabel={p.key}
             style={[
               styles.swatch,

@@ -2,11 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Tabs, router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import JoinEventSheet from "../../components/JoinEventSheet";
 import {
@@ -116,11 +111,6 @@ function TabBar({ state, navigation }: any) {
 }
 
 function TabItem({ tab, active, badge, onPress }: any) {
-  const scale = useSharedValue(1);
-  useEffect(() => {
-    scale.set(withSpring(active ? 1.12 : 1, { damping: 12, stiffness: 220 }));
-  }, [active, scale]);
-  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
   const color = active ? colors.mint : colors.textMuted;
   return (
     <PressableScale
@@ -130,10 +120,10 @@ function TabItem({ tab, active, badge, onPress }: any) {
       accessibilityState={{ selected: active }}
       style={styles.tab}
     >
-      <Animated.View style={iconStyle}>
+      <View>
         <Ionicons name={active ? tab.icon : `${tab.icon}-outline`} size={23} color={color} />
         <CountBadge count={badge} />
-      </Animated.View>
+      </View>
       <Text style={[styles.label, { color }]}>{tab.label}</Text>
     </PressableScale>
   );
@@ -145,7 +135,6 @@ function PlusButton({ onPress }: any) {
       <PressableScale
         onPress={onPress}
         hapticOnPress="medium"
-        scaleTo={0.9}
         accessibilityRole="button"
         accessibilityLabel="Create"
         style={styles.plus}

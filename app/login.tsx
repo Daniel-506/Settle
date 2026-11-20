@@ -2,12 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Linking from "expo-linking";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HexLogo from "../components/HexLogo";
 import { Button, PressableScale, Segmented, TextField, notify } from "../components/ui";
 import { supabase } from "../lib/supabase";
 import { colors, font, radius } from "../lib/theme";
+import { enter } from "../lib/motion";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -74,7 +75,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInUp.springify().damping(16)} style={styles.brand}>
+        <Animated.View entering={enter} style={styles.brand}>
           <HexLogo size={64} />
           <Text style={[font.hero, { color: colors.text, marginTop: 14 }]}>Settle</Text>
           <Text style={[font.body, { color: colors.textSecondary, marginTop: 4 }]}>
@@ -82,7 +83,7 @@ export default function LoginScreen() {
           </Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(120).springify().damping(18)}>
+        <Animated.View entering={enter}>
           <View style={{ marginBottom: 16 }}>
             <Segmented
               value={mode}
@@ -117,7 +118,7 @@ export default function LoginScreen() {
           />
 
           {error ? (
-            <Animated.View entering={FadeIn} style={styles.error}>
+            <Animated.View entering={enter} style={styles.error}>
               <Ionicons name="alert-circle" size={18} color={colors.pink} />
               <Text style={[font.small, { color: colors.pink, flex: 1 }]}>{error}</Text>
             </Animated.View>

@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Avatar,
@@ -17,6 +17,7 @@ import { dayLabel, timeAgo, toDateKey } from "../../lib/format";
 import { supabase } from "../../lib/supabase";
 import { colors, font, money } from "../../lib/theme";
 import useStore from "../../store/useStore";
+import { enter, layoutShift } from "../../lib/motion";
 
 export default function ActivityScreen() {
   const insets = useSafeAreaInsets();
@@ -101,7 +102,7 @@ export default function ActivityScreen() {
           />
         ) : (
           groups.map((g) => (
-            <Animated.View key={g.label} layout={LinearTransition.springify()}>
+            <Animated.View key={g.label} layout={layoutShift}>
               <SectionLabel style={{ marginTop: 6 }}>{g.label}</SectionLabel>
               <Card style={{ paddingVertical: 2, marginBottom: 14 }}>
                 {g.items.map((a, i) => {
@@ -109,10 +110,9 @@ export default function ActivityScreen() {
                   const actor = data.profiles[a.actor_id];
                   const isNew = lastSeen && a.created_at > lastSeen && a.actor_id !== userId;
                   return (
-                    <Animated.View key={a.id} entering={FadeInDown.delay(Math.min(i, 10) * 30).springify().damping(18)}>
+                    <Animated.View key={a.id} entering={enter}>
                       <PressableScale
                         onPress={() => d.href && router.push(d.href)}
-                        scaleTo={0.98}
                         style={[styles.row, i < g.items.length - 1 && styles.rowBorder]}
                       >
                         <View>

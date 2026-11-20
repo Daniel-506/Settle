@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { EditEventSheet, deleteEvent, setEventStatus } from "../../components/EventActions";
 import InviteSheet from "../../components/InviteSheet";
@@ -31,6 +31,7 @@ import { calculateSplit, splitExpense } from "../../lib/splitCalculator";
 import { supabase } from "../../lib/supabase";
 import { categoryFor, colorForId, colors, font, money, radius } from "../../lib/theme";
 import useStore from "../../store/useStore";
+import { enter, layoutShift } from "../../lib/motion";
 
 export default function EventScreen() {
   const { id } = useLocalSearchParams();
@@ -240,7 +241,7 @@ export default function EventScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Title */}
-        <Animated.View entering={FadeIn.duration(300)} style={styles.titleRow}>
+        <Animated.View entering={enter} style={styles.titleRow}>
           <IconTile icon={event?.icon || "receipt"} colorKey={colorKey} size={52} />
           <View style={{ flex: 1 }}>
             <Text style={[font.title, { color: colors.text }]} numberOfLines={2}>
@@ -259,7 +260,7 @@ export default function EventScreen() {
         </Animated.View>
 
         {/* Your balance */}
-        <Animated.View entering={FadeInDown.springify().damping(18)}>
+        <Animated.View entering={enter}>
           <Card
             tone={myBalance > 0.004 ? "mint" : myBalance < -0.004 ? "pink" : undefined}
             style={styles.hero}
@@ -313,14 +314,14 @@ export default function EventScreen() {
             />
           ) : (
             timeline.map((group) => (
-              <Animated.View key={group.label} layout={LinearTransition.springify()}>
+              <Animated.View key={group.label} layout={layoutShift}>
                 <SectionLabel style={{ marginTop: 6 }}>{group.label}</SectionLabel>
                 <Card style={{ paddingVertical: 4, marginBottom: 14 }}>
                   {group.rows.map((r, i) => (
                     <Animated.View
                       key={r.key}
-                      entering={FadeInDown.delay(Math.min(i, 8) * 35).springify().damping(18)}
-                      layout={LinearTransition.springify()}
+                      entering={enter}
+                      layout={layoutShift}
                     >
                       {r.kind === "expense" ? (
                         <ExpenseRow
@@ -351,7 +352,7 @@ export default function EventScreen() {
               return (
                 <Animated.View
                   key={m.id}
-                  entering={FadeInDown.delay(i * 40).springify()}
+                  entering={enter}
                   style={[styles.row, i < members.length - 1 && styles.rowBorder]}
                 >
                   <Avatar id={m.id} name={m.display_name} uri={m.avatar_url} size={38} />
@@ -456,7 +457,6 @@ function ExpenseRow({ expense, members, memberIds, userId, last }: any) {
   return (
     <PressableScale
       onPress={() => router.push(`/edit-expense?id=${expense.id}`)}
-      scaleTo={0.98}
       style={[styles.row, !last && styles.rowBorder]}
     >
       <IconTile icon={cat.icon} colorKey={cat.color} size={40} />

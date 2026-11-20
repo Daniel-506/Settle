@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, LinearTransition } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { loadFriends, loadRecentPeople, searchPeople } from "../lib/friends";
 import { colors, font, radius } from "../lib/theme";
 import { Avatar, PressableScale, SectionLabel, TextField } from "./ui";
+import { enter, layoutShift } from "../lib/motion";
 
 // Friends + people you've split with as tap-to-add bubbles, plus username search.
 // selectedIds: already picked; excludeIds: never shown (e.g. you, current members)
@@ -70,7 +71,7 @@ export default function PeoplePicker({ userId, selectedIds = [], excludeIds = []
         style={{ marginBottom: 8, marginTop: 4 }}
       />
       {results.length > 0 && (
-        <Animated.View entering={FadeIn} style={styles.results}>
+        <Animated.View entering={enter} style={styles.results}>
           {results.map((p) => {
             const picked = selectedIds.includes(p.id);
             return (
@@ -78,7 +79,6 @@ export default function PeoplePicker({ userId, selectedIds = [], excludeIds = []
                 key={p.id}
                 onPress={() => onPick(p)}
                 hapticOnPress="select"
-                scaleTo={0.99}
                 style={styles.resultRow}
               >
                 <Avatar id={p.id} name={p.display_name} uri={p.avatar_url} size={34} />
@@ -114,13 +114,12 @@ function BubbleRow({ people, selectedIds, onPick }: any) {
         return (
           <Animated.View
             key={p.id}
-            entering={FadeInDown.delay(i * 40).springify().damping(16)}
-            layout={LinearTransition}
+            entering={enter}
+            layout={layoutShift}
           >
             <PressableScale
               onPress={() => onPick(p)}
               hapticOnPress="select"
-              scaleTo={0.92}
               style={styles.bubble}
               accessibilityLabel={`${picked ? "Remove" : "Add"} ${p.display_name}`}
             >

@@ -1,13 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
-import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, Button, EmptyState, Header, Skeleton, toast } from "../../components/ui";
 import { loadFriends, sendFriendRequest } from "../../lib/friends";
 import { supabase } from "../../lib/supabase";
 import { colors, font } from "../../lib/theme";
 import useStore from "../../store/useStore";
+import { enter } from "../../lib/motion";
 
 // Opened from a friend invite link: settle://friend/danny
 export default function FriendLinkScreen() {
@@ -57,10 +58,10 @@ export default function FriendLinkScreen() {
           <EmptyState icon="person" colorKey="pink" title="No one found" body={`There's no Settle user called @${username}.`} />
         ) : (
           <>
-            <Animated.View entering={ZoomIn.springify().damping(14)}>
+            <Animated.View entering={enter}>
               <Avatar id={person.id} name={person.display_name} uri={person.avatar_url} size={110} ring={colors.mint} />
             </Animated.View>
-            <Animated.View entering={FadeInDown.delay(100)} style={{ alignItems: "center", marginTop: 16, marginBottom: 26 }}>
+            <Animated.View entering={enter} style={{ alignItems: "center", marginTop: 16, marginBottom: 26 }}>
               <Text style={[font.title, { color: colors.text }]}>{person.display_name}</Text>
               <Text style={[font.body, { color: colors.textSecondary }]}>@{person.username}</Text>
             </Animated.View>

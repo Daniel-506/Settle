@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActionSheet,
@@ -30,6 +30,7 @@ import { shareText } from "../../lib/share";
 import { supabase } from "../../lib/supabase";
 import { colors, font } from "../../lib/theme";
 import useStore from "../../store/useStore";
+import { enter, exit, layoutShift } from "../../lib/motion";
 
 export default function FriendsScreen() {
   const insets = useSafeAreaInsets();
@@ -150,7 +151,7 @@ export default function FriendsScreen() {
 
         {/* Search results */}
         {query.trim().length >= 2 && (
-          <Animated.View entering={FadeIn} style={{ marginBottom: 18 }}>
+          <Animated.View entering={enter} style={{ marginBottom: 18 }}>
             <SectionLabel>Results</SectionLabel>
             {results.length === 0 ? (
               <Text style={[font.small, { color: colors.textSecondary }]}>
@@ -181,7 +182,7 @@ export default function FriendsScreen() {
         ) : (
           <>
             {data.incoming.length > 0 && (
-              <Animated.View entering={FadeInDown.springify()} layout={LinearTransition.springify()}>
+              <Animated.View entering={enter} layout={layoutShift}>
                 <SectionLabel>Requests · {data.incoming.length}</SectionLabel>
                 <Card tone="mint" style={{ paddingVertical: 2, marginBottom: 18 }}>
                   {data.incoming.map((p, i) => (
@@ -218,7 +219,7 @@ export default function FriendsScreen() {
             ) : (
               <Card style={{ paddingVertical: 2 }}>
                 {data.friends.map((p, i) => (
-                  <Animated.View key={p.id} entering={FadeInDown.delay(i * 35)} exiting={FadeOut} layout={LinearTransition.springify()}>
+                  <Animated.View key={p.id} entering={enter} exiting={exit} layout={layoutShift}>
                     <PersonRow person={p} last={i === data.friends.length - 1} onPress={() => setMenuFor(p)} />
                   </Animated.View>
                 ))}
@@ -303,7 +304,7 @@ function PersonRow({ person, last, children, onPress }: any) {
   );
   const style = [styles.row, !last && styles.rowBorder];
   return onPress ? (
-    <PressableScale onPress={onPress} scaleTo={0.98} style={style}>
+    <PressableScale onPress={onPress} style={style}>
       {content}
     </PressableScale>
   ) : (
